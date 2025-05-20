@@ -1,3 +1,5 @@
+// lib/presentation/pages/home/home_page.dart (modificado)
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../bloc/auth/auth_bloc.dart';
@@ -12,6 +14,7 @@ import 'chat_page.dart';
 import '../../widgets/book_card.dart';
 import '../../widgets/category_chip.dart';
 import '../../widgets/section_title.dart';
+import '../../widgets/voice_assistant_button.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -90,9 +93,14 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
+      // Agregar el botón flotante para la navegación por voz
+      floatingActionButton: const VoiceAssistantButton(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
+
+// El resto de la clase HomeContent se mantiene igual...
 
 class HomeContent extends StatelessWidget {
   const HomeContent({super.key});

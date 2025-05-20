@@ -1,3 +1,5 @@
+// lib/di/injection_container.dart (modificado)
+
 import 'package:get_it/get_it.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 
@@ -10,6 +12,9 @@ import '../presentation/bloc/loan/loan_bloc.dart';
 import '../presentation/bloc/reservation/reservation_bloc.dart';
 import '../presentation/bloc/notification/notification_bloc.dart';
 import '../presentation/bloc/chat/chat_bloc.dart';
+import '../core/services/dialogflow_service.dart';
+import '../core/services/speech_service.dart';
+import '../core/services/tts_service.dart';
 
 final sl = GetIt.instance;
 
@@ -80,6 +85,11 @@ Future<void> init() async {
   sl.registerLazySingleton<ChatRepository>(
     () => ChatRepositoryImpl(),
   );
+
+  // Services
+  sl.registerLazySingleton(() => DialogflowService());
+  sl.registerLazySingleton(() => SpeechService());
+  sl.registerLazySingleton(() => TTSService());
 
   // Core
   sl.registerLazySingleton(() => InternetConnectionChecker.createInstance());

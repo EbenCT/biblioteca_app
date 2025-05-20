@@ -1,7 +1,11 @@
+// lib/presentation/pages/home/chat_page.dart (modificado)
+
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../bloc/chat/chat_bloc.dart';
-import '../../../data/mock_data.dart';
+import '../../../core/controllers/voice_chat_controller.dart';
+import '../../../core/services/dialogflow_service.dart';
+import '../../../core/services/speech_service.dart';
+import '../../../core/services/tts_service.dart';
+import '../../../di/injection_container.dart' as di;
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -13,30 +17,24 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
-  List<ChatMessage> _messages = [];
+  late VoiceChatController _voiceChatController;
+  bool _isListening = false;
 
   @override
   void initState() {
     super.initState();
-    _initMessages();
-  }
-
-  void _initMessages() {
-    setState(() {
-      _messages = [
-        ChatMessage(
-          text: MockData.chatMessages[0],
-          isUserMessage: false,
-          timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-        ),
-      ];
-    });
+    _voiceChatController = VoiceChatController(
+      speechService: di.sl<SpeechService>(),
+      dialogflowService: di.sl<DialogflowService>(),
+      ttsService: di.sl<TTSService>(),
+    );
   }
 
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _voiceChatController.dispose();
     super.dispose();
   }
 
@@ -44,22 +42,8 @@ class _ChatPageState extends State<ChatPage> {
     if (_messageController.text.trim().isEmpty) return;
 
     final userMessage = _messageController.text;
-    _addMessage(userMessage, true);
+    _voiceChatController.sendTextMessage(userMessage);
     _messageController.clear();
-
-    context.read<ChatBloc>().add(SendMessageEvent(userMessage));
-  }
-
-  void _addMessage(String text, bool isUserMessage) {
-    setState(() {
-      _messages.add(
-        ChatMessage(
-          text: text,
-          isUserMessage: isUserMessage,
-          timestamp: DateTime.now(),
-        ),
-      );
-    });
     
     // Scroll to bottom after message is added
     Future.delayed(const Duration(milliseconds: 100), () {
@@ -73,152 +57,156 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
+  void _toggleListening() {
+    setState(() {
+      _isListening = !_isListening;
+    });
+    
+    if (_isListening) {
+      _voiceChatController.startListening();
+    } else {
+      _voiceChatController.stopListening();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Asistente Virtual'),
       ),
-      body: BlocListener<ChatBloc, ChatState>(
-        listener: (context, state) {
-          if (state is MessageSent) {
-            _addMessage(state.response, false);
-          } else if (state is ChatError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error: ${state.message}'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        },
-        child: Column(
-          children: [
-            // Chat explanation card
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Card(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '¿Cómo puedo ayudarte?',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Puedes preguntarme sobre la disponibilidad de libros, hacer reservas o consultar información general de la biblioteca.',
-                        style: TextStyle(fontSize: 14),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Ejemplos:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text('• "¿Tienen disponible Cien Años de Soledad?"'),
-                      const Text('• "¿Cuáles son los horarios de la biblioteca?"'),
-                      const Text('• "Quiero reservar un libro de Gabriel García Márquez"'),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            
-            // Messages list
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                itemCount: _messages.length,
-                itemBuilder: (context, index) {
-                  final message = _messages[index];
-                  return _buildMessageBubble(message);
-                },
-              ),
-            ),
-            
-            // Message input
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 5,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                child: Row(
+      body: Column(
+        children: [
+          // Chat explanation card
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Card(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _messageController,
-                        decoration: InputDecoration(
-                          hintText: 'Escribe tu mensaje...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.brightness == Brightness.dark
-                              ? Colors.grey.shade800
-                              : Colors.grey.shade200,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                        ),
-                        textCapitalization: TextCapitalization.sentences,
-                        onSubmitted: (_) => _sendMessage(),
+                    Text(
+                      '¿Cómo puedo ayudarte?',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    BlocBuilder<ChatBloc, ChatState>(
-                      builder: (context, state) {
-                        return IconButton(
-                          onPressed: state is ChatLoading
-                              ? null
-                              : _sendMessage,
-                          icon: state is ChatLoading
-                              ? const SizedBox(
-                                  height: 24,
-                                  width: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.send),
-                          color: Theme.of(context).colorScheme.primary,
-                        );
-                      },
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Puedes preguntarme sobre la disponibilidad de libros, hacer reservas o consultar información general de la biblioteca.',
+                      style: TextStyle(fontSize: 14),
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Ejemplos:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text('• "¿Tienen disponible Cien Años de Soledad?"'),
+                    const Text('• "¿Cuáles son los horarios de la biblioteca?"'),
+                    const Text('• "Quiero reservar un libro de Gabriel García Márquez"'),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+          
+          // Messages list
+          Expanded(
+            child: StreamBuilder<List<VoiceChatMessage>>(
+              stream: _voiceChatController.messagesStream,
+              initialData: _voiceChatController.messages,
+              builder: (context, snapshot) {
+                final messages = snapshot.data ?? [];
+                
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final message = messages[index];
+                    return _buildMessageBubble(message);
+                  },
+                );
+              }
+            ),
+          ),
+          
+          // Message input
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 5,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      decoration: InputDecoration(
+                        hintText: 'Escribe tu mensaje...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.brightness == Brightness.dark
+                            ? Colors.grey.shade800
+                            : Colors.grey.shade200,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                      ),
+                      textCapitalization: TextCapitalization.sentences,
+                      onSubmitted: (_) => _sendMessage(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Botón de micrófono
+                  IconButton(
+                    onPressed: _toggleListening,
+                    icon: Icon(
+                      _isListening ? Icons.mic : Icons.mic_none,
+                      color: _isListening 
+                         ? Theme.of(context).colorScheme.primary
+                         : Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Botón de enviar texto
+                  IconButton(
+                    onPressed: _sendMessage,
+                    icon: const Icon(Icons.send),
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage message) {
-    final isUserMessage = message.isUserMessage;
+  Widget _buildMessageBubble(VoiceChatMessage message) {
+    final isUserMessage = message.isUser;
     
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -306,16 +294,4 @@ class _ChatPageState extends State<ChatPage> {
     final minute = time.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
-}
-
-class ChatMessage {
-  final String text;
-  final bool isUserMessage;
-  final DateTime timestamp;
-
-  ChatMessage({
-    required this.text,
-    required this.isUserMessage,
-    required this.timestamp,
-  });
 }

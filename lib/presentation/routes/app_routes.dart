@@ -22,10 +22,10 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/forgot-password': (context) => const ForgotPasswordPage(),
   '/home': (context) => const HomePage(),
   '/search': (context) => const SearchPage(),
-  '/loans': (context) => const LoansPage(),
-  '/reservations': (context) => const ReservationsPage(),
-  '/chat': (context) => const ChatPage(),
-  '/profile': (context) => const ProfilePage(),
+  '/loans': (context) => const LoansPage(),  // Agregada
+  '/reservations': (context) => const ReservationsPage(),  // Agregada
+  '/chat': (context) => const ChatPage(),  // Agregada
+  '/profile': (context) => const ProfilePage(),  // Agregada
 };
 
 // Para rutas que necesitan parámetros

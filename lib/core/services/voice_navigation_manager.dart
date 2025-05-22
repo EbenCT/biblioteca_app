@@ -1,4 +1,4 @@
-// lib/core/services/voice_navigation_manager.dart (simplificado)
+// lib/core/services/voice_navigation_manager.dart (corregido)
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +7,7 @@ import '../services/dialogflow_service.dart';
 import '../services/speech_service.dart';
 import '../services/tts_service.dart';
 import '../utils/permission_handler.dart';
+import '../../app.dart'; // Importar para acceder al navigatorKey
 
 class VoiceNavigationManager {
   final SpeechService _speechService;
@@ -168,7 +169,13 @@ class VoiceNavigationManager {
   }
   
   void _navigateToPage(String route) {
-    Navigator.of(_context).pushNamed(route);
+    // Usar el GlobalKey del navigator en lugar del contexto local
+    final NavigatorState? navigator = navigatorKey.currentState;
+    if (navigator != null) {
+      navigator.pushNamed(route);
+    } else {
+      print("Navigator no disponible");
+    }
   }
   
   // Método auxiliar para buscar un libro por título y navegar a su detalle

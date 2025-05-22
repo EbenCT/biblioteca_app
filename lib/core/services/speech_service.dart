@@ -1,4 +1,4 @@
-// lib/core/services/speech_service.dart (simplificado)
+// lib/core/services/speech_service.dart (corregido)
 
 import 'dart:async';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -8,6 +8,7 @@ class SpeechService {
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isInitialized = false;
   bool _isListening = false;
+  String? _spanishLocaleId; // Guardar el locale español detectado
   
   final StreamController<String> _textStreamController = 
       StreamController<String>.broadcast();
@@ -29,34 +30,38 @@ class SpeechService {
       return false;
     }
     
-  // Inicializar el speech-to-text
-  _isInitialized = await _speech.initialize(
-    onError: (error) => print('Error de reconocimiento: $error'),
-    onStatus: (status) {
-      print('Estado del reconocimiento: $status');
-      if (status == 'done' || status == 'notListening') {
-        _isListening = false;
-        _listeningStatusController.add(false);
-      }
-    },
-  );
-  
-  // Verificar si el idioma español está disponible
-  if (_isInitialized) {
-    final locales = await _speech.locales();
-    print("Idiomas disponibles: $locales");
+    // Inicializar el speech-to-text
+    _isInitialized = await _speech.initialize(
+      onError: (error) => print('Error de reconocimiento: $error'),
+      onStatus: (status) {
+        print('Estado del reconocimiento: $status');
+        if (status == 'done' || status == 'notListening') {
+          _isListening = false;
+          _listeningStatusController.add(false);
+        }
+      },
+    );
     
-    // Buscar el idioma español
-    // ignore: unused_local_variable
-    stt.LocaleName? spanish;
-    for (var locale in locales) {
-      if (locale.localeId.startsWith('es')) {
-        spanish = locale;
-        print("Idioma español encontrado: ${locale.localeId} - ${locale.name}");
-        break;
+    // Verificar si el idioma español está disponible
+    if (_isInitialized) {
+      final locales = await _speech.locales();
+      print("Idiomas disponibles: $locales");
+      
+      // Buscar el mejor idioma español disponible
+      for (var locale in locales) {
+        if (locale.localeId.startsWith('es')) {
+          _spanishLocaleId = locale.localeId;
+          print("Idioma español encontrado: ${locale.localeId} - ${locale.name}");
+          break;
+        }
+      }
+      
+      // Si no se encuentra un locale español específico, usar el locale por defecto
+      if (_spanishLocaleId == null) {
+        print("No se encontró locale español específico, usando configuración por defecto");
+        _spanishLocaleId = 'es-ES'; // Fallback
       }
     }
-  }
     
     return _isInitialized;
   }
@@ -69,7 +74,7 @@ class SpeechService {
     
     if (!_isListening) {
       _isListening = await _speech.listen(
-        localeId: 'es_ES',
+        localeId: _spanishLocaleId, // Usar el locale español detectado
         onResult: (result) {
           // Enviar el texto reconocido al stream
           if (result.finalResult) {

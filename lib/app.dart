@@ -6,6 +6,9 @@ import 'core/theme/app_theme.dart';
 import 'presentation/routes/app_routes.dart';
 import 'presentation/widgets/voice_assistant_overlay.dart';
 
+// GlobalKey para acceso al navigator
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 class App extends StatelessWidget {
   const App({super.key});
 
@@ -16,6 +19,7 @@ class App extends StatelessWidget {
         return MaterialApp(
           title: 'Biblioteca UAGRM',
           debugShowCheckedModeBanner: false,
+          navigatorKey: navigatorKey, // Agregar el navigatorKey
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: themeProvider.themeMode,

@@ -1,5 +1,8 @@
+// lib/presentation/widgets/book_card.dart (actualizado)
+
 import 'package:flutter/material.dart';
 import '../../domain/entities/entities.dart';
+import 'network_image_widget.dart';
 
 class BookCard extends StatelessWidget {
   final Book book;
@@ -26,15 +29,12 @@ class BookCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Book cover
-              ClipRRect(
+              // Book cover con manejo de errores
+              NetworkImageWidget(
+                imageUrl: book.imageUrl,
+                width: 80,
+                height: 120,
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  book.imageUrl,
-                  width: 80,
-                  height: 120,
-                  fit: BoxFit.cover,
-                ),
               ),
               const SizedBox(width: 12),
               
@@ -64,63 +64,26 @@ class BookCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     
-                    // Type and category
-                    Row(
+                    // Type and category con control de overflow
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: book.type == 'Físico'
-                                ? Colors.blue.withOpacity(0.1)
-                                : Colors.purple.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: book.type == 'Físico'
-                                  ? Colors.blue
-                                  : Colors.purple,
-                            ),
-                          ),
-                          child: Text(
-                            book.type,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: book.type == 'Físico'
-                                  ? Colors.blue
-                                  : Colors.purple,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                        _buildChip(
+                          context,
+                          book.type,
+                          book.type == 'Físico' ? Colors.blue : Colors.purple,
                         ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                          child: Text(
-                            book.category,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                        _buildChip(
+                          context,
+                          book.category,
+                          Theme.of(context).colorScheme.primary,
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     
-                    // Rating
+                    // Rating and availability
                     Row(
                       children: [
                         Icon(
@@ -147,26 +110,10 @@ class BookCard extends StatelessWidget {
                         const Spacer(),
                         
                         // Availability
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: book.isAvailable ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: book.isAvailable ? Colors.green : Colors.red,
-                            ),
-                          ),
-                          child: Text(
-                            book.isAvailable ? 'Disponible' : 'No disponible',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: book.isAvailable ? Colors.green : Colors.red,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                        _buildChip(
+                          context,
+                          book.isAvailable ? 'Disponible' : 'No disponible',
+                          book.isAvailable ? Colors.green : Colors.red,
                         ),
                       ],
                     ),
@@ -176,6 +123,26 @@ class BookCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+  
+  Widget _buildChip(BuildContext context, String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          color: color,
+          fontWeight: FontWeight.bold,
+        ),
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../bloc/loan/loan_bloc.dart';
 import '../../../domain/entities/entities.dart';
+import '../../widgets/network_image_widget.dart';
 import 'loan_detail_page.dart';
 import 'package:intl/intl.dart';
 
@@ -174,15 +175,12 @@ class LoanCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Book cover
-              ClipRRect(
+              // Book cover con manejo de errores
+              NetworkImageWidget(
+                imageUrl: loan.bookImageUrl,
+                width: 80,
+                height: 120,
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  loan.bookImageUrl,
-                  width: 80,
-                  height: 120,
-                  fit: BoxFit.cover,
-                ),
               ),
               const SizedBox(width: 12),
               
@@ -219,41 +217,31 @@ class LoanCard extends StatelessWidget {
                     
                     // Loan status and penalties
                     const SizedBox(height: 8),
-                    if (loan.isReturned) ...[
-                      _buildStatusChip(
-                        context,
-                        'Devuelto',
-                        Colors.green,
-                      ),
-                      if (loan.isLate && loan.penalty != null) ...[
-                        const SizedBox(height: 4),
-                        _buildStatusChip(
-                          context,
-                          'Multa: Bs. ${loan.penalty!.toStringAsFixed(2)}',
-                          Colors.red,
-                        ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        if (loan.isReturned) ...[
+                          _buildStatusChip(context, 'Devuelto', Colors.green),
+                          if (loan.isLate && loan.penalty != null)
+                            _buildStatusChip(
+                              context,
+                              'Multa: Bs. ${loan.penalty!.toStringAsFixed(2)}',
+                              Colors.red,
+                            ),
+                        ] else if (loan.isLate) ...[
+                          _buildStatusChip(context, 'Atrasado', Colors.red),
+                          if (loan.penalty != null)
+                            _buildStatusChip(
+                              context,
+                              'Multa: Bs. ${loan.penalty!.toStringAsFixed(2)}',
+                              Colors.red,
+                            ),
+                        ] else ...[
+                          _buildStatusChip(context, 'Activo', Colors.blue),
+                        ],
                       ],
-                    ] else if (loan.isLate) ...[
-                      _buildStatusChip(
-                        context,
-                        'Atrasado',
-                        Colors.red,
-                      ),
-                      if (loan.penalty != null) ...[
-                        const SizedBox(height: 4),
-                        _buildStatusChip(
-                          context,
-                          'Multa: Bs. ${loan.penalty!.toStringAsFixed(2)}',
-                          Colors.red,
-                        ),
-                      ],
-                    ] else ...[
-                      _buildStatusChip(
-                        context,
-                        'Activo',
-                        Colors.blue,
-                      ),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -279,12 +267,15 @@ class LoanCard extends StatelessWidget {
           color: color ?? Colors.grey.shade600,
         ),
         const SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 14,
-            color: color ?? Colors.grey.shade600,
-            fontWeight: fontWeight,
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 14,
+              color: color ?? Colors.grey.shade600,
+              fontWeight: fontWeight,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -306,6 +297,7 @@ class LoanCard extends StatelessWidget {
           fontSize: 12,
           fontWeight: FontWeight.bold,
         ),
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

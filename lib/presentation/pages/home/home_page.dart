@@ -1,4 +1,4 @@
-// lib/presentation/pages/home/home_page.dart (modificado)
+// lib/presentation/pages/home/home_page.dart (actualizado sin overflow)
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -15,6 +15,7 @@ import '../../widgets/book_card.dart';
 import '../../widgets/category_chip.dart';
 import '../../widgets/section_title.dart';
 import '../../widgets/voice_assistant_button.dart';
+import '../../widgets/network_image_widget.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -43,7 +44,6 @@ class _HomePageState extends State<HomePage> {
     context.read<BookBloc>().add(const GetBooksEvent());
     context.read<BookBloc>().add(GetRecommendedBooksEvent());
     
-    // Asegurarse de que el NotificationBloc esté disponible antes de llamarlo
     if (context.read<NotificationBloc>().state is NotificationInitial) {
       context.read<NotificationBloc>().add(GetNotificationsEvent());
     }
@@ -93,14 +93,11 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      // Agregar el botón flotante para la navegación por voz
       floatingActionButton: const VoiceAssistantButton(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
-
-// El resto de la clase HomeContent se mantiene igual...
 
 class HomeContent extends StatelessWidget {
   const HomeContent({super.key});
@@ -113,7 +110,6 @@ class HomeContent extends StatelessWidget {
         actions: [
           BlocBuilder<NotificationBloc, NotificationState>(
             builder: (context, state) {
-              // Si el bloque no está disponible o está en estado inicial, mostramos un indicador simple
               final hasUnread = state is NotificationsLoaded
                   ? state.notifications.any((notification) => !notification.isRead)
                   : false;
@@ -201,10 +197,12 @@ class HomeContent extends StatelessWidget {
                                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                         fontWeight: FontWeight.bold,
                                       ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
                                   '¿Qué quieres leer hoy?',
                                   style: Theme.of(context).textTheme.bodyLarge,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
@@ -220,7 +218,6 @@ class HomeContent extends StatelessWidget {
               // Search bar
               GestureDetector(
                 onTap: () {
-                  // Use Navigator instead of trying to update state in a stateless widget
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const SearchPage()),
                   );
@@ -239,10 +236,13 @@ class HomeContent extends StatelessWidget {
                         color: Colors.grey.shade600,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'Buscar libros, autores, categorías...',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
+                      Expanded(
+                        child: Text(
+                          'Buscar libros, autores, categorías...',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -254,9 +254,10 @@ class HomeContent extends StatelessWidget {
               // Categories
               const SectionTitle(title: 'Categorías'),
               const SizedBox(height: 8),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
+              SizedBox(
+                height: 40,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
                   children: [
                     'Literatura',
                     'Ciencias',
@@ -280,7 +281,7 @@ class HomeContent extends StatelessWidget {
                 builder: (context, state) {
                   if (state is RecommendedBooksLoaded) {
                     return SizedBox(
-                      height: 280,
+                      height: 300, // Aumenté la altura total
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         itemCount: state.books.length,
@@ -298,62 +299,66 @@ class HomeContent extends StatelessWidget {
                               width: 160,
                               margin: const EdgeInsets.only(right: 16),
                               child: Column(
+                                mainAxisSize: MainAxisSize.min, // Importante: tamaño mínimo
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  ClipRRect(
+                                  // Imagen del libro con manejo de errores
+                                  NetworkImageWidget(
+                                    imageUrl: book.imageUrl,
+                                    width: 160,
+                                    height: 200,
                                     borderRadius: BorderRadius.circular(8),
-                                    child: Image.network(
-                                      book.imageUrl,
-                                      height: 200,
-                                      width: 160,
-                                      fit: BoxFit.cover,
-                                    ),
                                   ),
                                   const SizedBox(height: 8),
-                                  Text(
-                                    book.title,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    book.authors.join(', '),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.star,
-                                        size: 16,
-                                        color: Colors.amber.shade700,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        book.rating.toString(),
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
+                                  
+                                  // Información del libro con altura fija para evitar overflow
+                                  SizedBox(
+                                    height: 84, // Altura fija para el texto
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          book.title,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '(${book.ratingCount})',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey.shade600,
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          book.authors.join(', '),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                      ),
-                                    ],
+                                        const Spacer(),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.star,
+                                              size: 16,
+                                              color: Colors.amber.shade700,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                '${book.rating} (${book.ratingCount})',
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
@@ -363,17 +368,21 @@ class HomeContent extends StatelessWidget {
                       ),
                     );
                   } else if (state is BookLoading) {
-                    return SizedBox(
-                      height: 280,
+                    return const SizedBox(
+                      height: 300,
                       child: Center(
                         child: CircularProgressIndicator(),
                       ),
                     );
                   } else if (state is BookError) {
                     return Center(
-                      child: Text(
-                        'Error al cargar recomendaciones: ${state.message}',
-                        style: TextStyle(color: Colors.red),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          'Error al cargar recomendaciones: ${state.message}',
+                          style: const TextStyle(color: Colors.red),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     );
                   }
@@ -415,9 +424,13 @@ class HomeContent extends StatelessWidget {
                     );
                   } else if (state is BookError) {
                     return Center(
-                      child: Text(
-                        'Error al cargar libros: ${state.message}',
-                        style: const TextStyle(color: Colors.red),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          'Error al cargar libros: ${state.message}',
+                          style: const TextStyle(color: Colors.red),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     );
                   }

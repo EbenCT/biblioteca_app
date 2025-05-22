@@ -29,17 +29,34 @@ class SpeechService {
       return false;
     }
     
-    // Inicializar el speech-to-text
-    _isInitialized = await _speech.initialize(
-      onError: (error) => print('Error de reconocimiento: $error'),
-      onStatus: (status) {
-        print('Estado del reconocimiento: $status');
-        if (status == 'done' || status == 'notListening') {
-          _isListening = false;
-          _listeningStatusController.add(false);
-        }
-      },
-    );
+  // Inicializar el speech-to-text
+  _isInitialized = await _speech.initialize(
+    onError: (error) => print('Error de reconocimiento: $error'),
+    onStatus: (status) {
+      print('Estado del reconocimiento: $status');
+      if (status == 'done' || status == 'notListening') {
+        _isListening = false;
+        _listeningStatusController.add(false);
+      }
+    },
+  );
+  
+  // Verificar si el idioma español está disponible
+  if (_isInitialized) {
+    final locales = await _speech.locales();
+    print("Idiomas disponibles: $locales");
+    
+    // Buscar el idioma español
+    // ignore: unused_local_variable
+    stt.LocaleName? spanish;
+    for (var locale in locales) {
+      if (locale.localeId.startsWith('es')) {
+        spanish = locale;
+        print("Idioma español encontrado: ${locale.localeId} - ${locale.name}");
+        break;
+      }
+    }
+  }
     
     return _isInitialized;
   }

@@ -101,37 +101,42 @@ class DialogflowService {
     }
   }
 
-  Map<String, dynamic> _parseResponse(String response) {
-    // Procesamos la respuesta para extraer la acción y parámetros
-    Map<String, dynamic> result = {
-      'action': '',
-      'message': response,
-      'parameters': {}
-    };
+Map<String, dynamic> _parseResponse(String response) {
+  // Procesamos la respuesta para extraer la acción y parámetros
+  Map<String, dynamic> result = {
+    'action': '',
+    'message': response,
+    'parameters': {}
+  };
 
-    // Si no hay dos puntos, consideramos que es solo la acción
-    if (!response.contains(':')) {
-      result['action'] = response;
-      return result;
-    }
-
-    try {
-      // Dividimos por los dos puntos para separar acción y parámetros
-      final parts = response.split(':');
-      result['action'] = parts[0].trim();
-      
-      // Si hay parámetros, los procesamos
-      if (parts.length > 1 && parts[1].isNotEmpty) {
-        final paramString = parts[1].trim();
-        result['parameters'] = {'value': paramString};
-      }
-    } catch (e) {
-      print('Error analizando respuesta: $e');
-    }
-
+  // Si no hay dos puntos, consideramos que es solo la acción
+  if (!response.contains(':')) {
+    result['action'] = response;
+    // En este caso, el mensaje quedará igual que la acción
+    // (ya que no hay un mensaje separado)
     return result;
   }
 
+  try {
+    // Dividimos por los dos puntos para separar acción y mensaje
+    final parts = response.split(':');
+    result['action'] = parts[0].trim();
+    
+    // Si hay contenido después de los dos puntos, lo usamos como mensaje
+    // (esto eliminará la acción del mensaje a reproducir)
+    if (parts.length > 1) {
+      result['message'] = parts[1].trim();
+      
+      // Si hay parámetros adicionales, los procesamos
+      final paramString = parts[1].trim();
+      result['parameters'] = {'value': paramString};
+    }
+  } catch (e) {
+    print('Error analizando respuesta: $e');
+  }
+
+  return result;
+}
   void dispose() {
     _responseStreamController.close();
   }

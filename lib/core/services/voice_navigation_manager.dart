@@ -1,4 +1,4 @@
-// lib/core/services/voice_navigation_manager.dart (corregido)
+// lib/core/services/voice_navigation_manager.dart (corregido con debugging)
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +6,7 @@ import '../../presentation/bloc/book/book_bloc.dart';
 import '../services/dialogflow_service.dart';
 import '../services/speech_service.dart';
 import '../services/tts_service.dart';
+import '../utils/device_config_checker.dart';
 import '../utils/permission_handler.dart';
 import '../../app.dart'; // Importar para acceder al navigatorKey
 
@@ -28,13 +29,20 @@ class VoiceNavigationManager {
   Stream<bool> get listeningStatus => _speechService.listeningStatus;
 
   Future<void> _initialize() async {
+    // Mostrar guía de configuración en los logs
+    print("🔧 Iniciando configuración de reconocimiento de voz...");
+    
     // Inicializar el servicio de reconocimiento de voz
-    await _speechService.initialize();
+    final speechInitialized = await _speechService.initialize();
+    if (!speechInitialized) {
+      print("❌ No se pudo inicializar el servicio de voz");
+      return;
+    }
     
     // Verificar permiso de micrófono
     final hasPermission = await AppPermissionHandler.requestMicrophonePermission(_context);
     if (!hasPermission) {
-      print("Permiso de micrófono no concedido");
+      print("❌ Permiso de micrófono no concedido");
       return;
     }
     
@@ -49,22 +57,71 @@ class VoiceNavigationManager {
     _dialogflowService.onResponse.listen((response) {
       _handleDialogflowResponse(response);
     });
+    
+    print("✅ Configuración de voz completada");
   }
   
   void toggleListening() {
     if (_speechService.isListening) {
       _speechService.stopListening();
       _isActive = false;
+      _ttsService.stop(); // Parar TTS si está hablando
     } else {
-      _speechService.startListening();
-      _isActive = true;
-      _ttsService.speak("Te escucho");
+      _startListeningWithDelay();
+    }
+  }
+  
+  // Nuevo método para coordinar TTS y Speech Recognition
+  Future<void> _startListeningWithDelay() async {
+    _isActive = true;
+    
+    // 1. Primero parar cualquier TTS que esté reproduciéndose
+    await _ttsService.stop();
+    
+    // 2. Reproducir mensaje de confirmación y esperar a que termine
+    await _ttsService.speak("Te escucho");
+    
+    // 3. Inmediatamente después de que termine el TTS, iniciar reconocimiento
+    print("🎤 Iniciando reconocimiento inmediatamente después del TTS");
+    await _speechService.startListening();
+    
+    // 4. Verificar si realmente inició después de un momento breve
+    await Future.delayed(const Duration(milliseconds: 200));
+    if (!_speechService.isListening) {
+      print("❌ El reconocimiento no inició, reintentando una vez...");
+      await Future.delayed(const Duration(milliseconds: 300));
+      await _speechService.startListening();
     }
   }
   
   void _processVoiceCommand(String text) {
-    // Simplemente enviamos el texto reconocido a DialogFlow
+    // Verificar si el texto parece inglés (problema común)
+    if (_isTextEnglish(text)) {
+      print("🚨 DETECTADO TEXTO EN INGLÉS: $text");
+      DeviceConfigChecker.printConfigurationGuide();
+      _ttsService.speak("He detectado que reconocí en inglés. Por favor revisa la configuración de idioma de tu dispositivo.");
+      return;
+    }
+    
+    // Enviar el texto en español a DialogFlow
     _dialogflowService.detectIntent(text);
+  }
+  
+  bool _isTextEnglish(String text) {
+    final englishIndicators = [
+      'battlefield', 'over me better feel', 'i said', 'the', 'and', 'or', 'but',
+      'said', 'me', 'better', 'feel', 'over'
+    ];
+    
+    final lowerText = text.toLowerCase();
+    
+    for (String indicator in englishIndicators) {
+      if (lowerText.contains(indicator)) {
+        return true;
+      }
+    }
+    
+    return false;
   }
   
   void _handleDialogflowResponse(Map<String, dynamic> response) {

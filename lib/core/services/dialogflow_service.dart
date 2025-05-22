@@ -1,4 +1,4 @@
-// lib/core/services/dialogflow_service.dart (corregido)
+// lib/core/services/dialogflow_service.dart (corregido y mejorado)
 
 import 'dart:async';
 import 'package:dialogflow_flutter/dialogflowFlutter.dart';
@@ -22,13 +22,13 @@ class DialogflowService {
         fileJson: "assets/dialogflow_credentials.json"
       ).build();
       
-      // Inicializar DialogFlow con las credenciales
+      // Inicializar DialogFlow con las credenciales y especificar idioma español
       dialogflow = DialogFlow(
         authGoogle: authGoogle,
-        language: "es"
+        language: "es" // Asegurar que esté en español
       );
       
-      print("DialogFlow inicializado correctamente");
+      print("DialogFlow inicializado correctamente en español");
     } catch (e) {
       print("Error inicializando DialogFlow: $e");
     }
@@ -101,42 +101,43 @@ class DialogflowService {
     }
   }
 
-Map<String, dynamic> _parseResponse(String response) {
-  // Procesamos la respuesta para extraer la acción y parámetros
-  Map<String, dynamic> result = {
-    'action': '',
-    'message': response,
-    'parameters': {}
-  };
+  Map<String, dynamic> _parseResponse(String response) {
+    // Procesamos la respuesta para extraer la acción y parámetros
+    Map<String, dynamic> result = {
+      'action': '',
+      'message': response,
+      'parameters': {}
+    };
 
-  // Si no hay dos puntos, consideramos que es solo la acción
-  if (!response.contains(':')) {
-    result['action'] = response;
-    // En este caso, el mensaje quedará igual que la acción
-    // (ya que no hay un mensaje separado)
+    // Si no hay dos puntos, consideramos que es solo la acción
+    if (!response.contains(':')) {
+      result['action'] = response;
+      // En este caso, el mensaje quedará igual que la acción
+      // (ya que no hay un mensaje separado)
+      return result;
+    }
+
+    try {
+      // Dividimos por los dos puntos para separar acción y mensaje
+      final parts = response.split(':');
+      result['action'] = parts[0].trim();
+      
+      // Si hay contenido después de los dos puntos, lo usamos como mensaje
+      // (esto eliminará la acción del mensaje a reproducir)
+      if (parts.length > 1) {
+        result['message'] = parts[1].trim();
+        
+        // Si hay parámetros adicionales, los procesamos
+        final paramString = parts[1].trim();
+        result['parameters'] = {'value': paramString};
+      }
+    } catch (e) {
+      print('Error analizando respuesta: $e');
+    }
+
     return result;
   }
-
-  try {
-    // Dividimos por los dos puntos para separar acción y mensaje
-    final parts = response.split(':');
-    result['action'] = parts[0].trim();
-    
-    // Si hay contenido después de los dos puntos, lo usamos como mensaje
-    // (esto eliminará la acción del mensaje a reproducir)
-    if (parts.length > 1) {
-      result['message'] = parts[1].trim();
-      
-      // Si hay parámetros adicionales, los procesamos
-      final paramString = parts[1].trim();
-      result['parameters'] = {'value': paramString};
-    }
-  } catch (e) {
-    print('Error analizando respuesta: $e');
-  }
-
-  return result;
-}
+  
   void dispose() {
     _responseStreamController.close();
   }

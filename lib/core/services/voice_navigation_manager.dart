@@ -1,9 +1,9 @@
-// lib/core/services/voice_navigation_manager.dart (corregido con debugging)
+// lib/core/services/voice_navigation_manager.dart (actualizado)
 
+import 'package:biblio_app/core/services/dialogflow_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../presentation/bloc/book/book_bloc.dart';
-import '../services/dialogflow_service.dart';
 import '../services/speech_service.dart';
 import '../services/tts_service.dart';
 import '../utils/device_config_checker.dart';
@@ -12,7 +12,7 @@ import '../../app.dart'; // Importar para acceder al navigatorKey
 
 class VoiceNavigationManager {
   final SpeechService _speechService;
-  final DialogflowService _dialogflowService;
+  final SimpleDialogflowService _dialogflowService;
   final TTSService _ttsService;
   final BuildContext _context;
   
@@ -20,7 +20,7 @@ class VoiceNavigationManager {
   
   VoiceNavigationManager(this._context)
       : _speechService = SpeechService(),
-        _dialogflowService = DialogflowService(),
+        _dialogflowService = SimpleDialogflowService(),
         _ttsService = TTSService() {
     _initialize();
   }
@@ -53,12 +53,12 @@ class VoiceNavigationManager {
       }
     });
     
-    // Suscribirse al stream de respuestas de DialogFlow
+    // Suscribirse al stream de respuestas del servicio simple de DialogFlow
     _dialogflowService.onResponse.listen((response) {
       _handleDialogflowResponse(response);
     });
     
-    print("✅ Configuración de voz completada");
+    print("✅ Configuración de voz completada con servicio local");
   }
   
   void toggleListening() {
@@ -71,7 +71,7 @@ class VoiceNavigationManager {
     }
   }
   
-  // Nuevo método para coordinar TTS y Speech Recognition
+  // Método para coordinar TTS y Speech Recognition
   Future<void> _startListeningWithDelay() async {
     _isActive = true;
     
@@ -103,7 +103,7 @@ class VoiceNavigationManager {
       return;
     }
     
-    // Enviar el texto en español a DialogFlow
+    // Enviar el texto en español al servicio simple de DialogFlow
     _dialogflowService.detectIntent(text);
   }
   
@@ -191,9 +191,18 @@ class VoiceNavigationManager {
         _searchBookAndReserve(bookTitle);
         break;
       
+      case 'AYUDA':
+        // No necesita navegación, solo el mensaje TTS
+        break;
+      
+      case 'DESPEDIDA':
+        // Parar el asistente después de la despedida
+        _isActive = false;
+        _speechService.stopListening();
+        break;
+      
       default:
-        // Acción no reconocida
-        _ttsService.speak("No pude entender esa acción");
+        // Acción no reconocida - el mensaje ya se reproduce por TTS
         break;
     }
   }
@@ -253,5 +262,6 @@ class VoiceNavigationManager {
   void dispose() {
     _speechService.dispose();
     _ttsService.dispose();
+    _dialogflowService.dispose();
   }
 }

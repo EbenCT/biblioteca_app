@@ -1,4 +1,4 @@
-// lib/core/controllers/voice_chat_controller.dart
+// lib/core/controllers/voice_chat_controller.dart (actualizado)
 
 import 'dart:async';
 import '../services/dialogflow_service.dart';
@@ -19,7 +19,7 @@ class VoiceChatMessage {
 
 class VoiceChatController {
   final SpeechService _speechService;
-  final DialogflowService _dialogflowService;
+  final SimpleDialogflowService _dialogflowService;
   final TTSService _ttsService;
   
   final List<VoiceChatMessage> _messages = [];
@@ -31,7 +31,7 @@ class VoiceChatController {
   
   VoiceChatController({
     required SpeechService speechService,
-    required DialogflowService dialogflowService,
+    required SimpleDialogflowService dialogflowService,
     required TTSService ttsService,
   }) : _speechService = speechService,
        _dialogflowService = dialogflowService,
@@ -54,7 +54,7 @@ class VoiceChatController {
       }
     });
     
-    // Escuchar las respuestas de DialogFlow
+    // Escuchar las respuestas del servicio simple de DialogFlow
     _dialogflowService.onResponse.listen((response) {
       final message = response['message'];
       _addMessage(message, false);
@@ -92,5 +92,6 @@ class VoiceChatController {
     _messagesController.close();
     _speechService.dispose();
     _ttsService.dispose();
+    _dialogflowService.dispose();
   }
 }

@@ -20,6 +20,14 @@ class _LoginPageState extends State<LoginPage> {
   bool _rememberMe = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Pre-llenar con credenciales de prueba para testing
+    _emailController.text = 'user@biblioteca.com';
+    _passwordController.text = 'user123';
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -37,6 +45,26 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  void _fillTestCredentials(String userType) {
+    setState(() {
+      switch (userType) {
+        case 'admin':
+          _emailController.text = 'admin@biblioteca.com';
+          _passwordController.text = 'admin123';
+          break;
+        case 'librarian':
+          _emailController.text = 'librarian@biblioteca.com';
+          _passwordController.text = 'librarian123';
+          break;
+        case 'user':
+        default:
+          _emailController.text = 'user@biblioteca.com';
+          _passwordController.text = 'user123';
+          break;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -51,6 +79,7 @@ class _LoginPageState extends State<LoginPage> {
               SnackBar(
                 content: Text(state.message),
                 backgroundColor: Colors.red,
+                duration: const Duration(seconds: 4),
               ),
             );
           }
@@ -98,13 +127,47 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 48),
 
+                    // Test user buttons (for development)
+                    if (true) ...[  // Set to false for production
+                      const Text(
+                        'Usuarios de prueba:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => _fillTestCredentials('user'),
+                              child: const Text('Usuario'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => _fillTestCredentials('librarian'),
+                              child: const Text('Bibliotecario'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => _fillTestCredentials('admin'),
+                              child: const Text('Admin'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+
                     // Email field
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(
                         labelText: 'Correo electrónico',
-                        hintText: 'ejemplo@uagrm.edu.bo',
+                        hintText: 'ejemplo@biblioteca.com',
                         prefixIcon: Icon(Icons.email_outlined),
                       ),
                       validator: (value) {
@@ -214,6 +277,43 @@ class _LoginPageState extends State<LoginPage> {
                           child: const Text('Regístrate'),
                         ),
                       ],
+                    ),
+
+                    // Connection status (for debugging)
+                    BlocBuilder<AuthBloc, AuthState>(
+                      builder: (context, state) {
+                        if (state is AuthError) {
+                          return Container(
+                            margin: const EdgeInsets.only(top: 16),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.red.shade300),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Error de conexión:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red.shade700,
+                                  ),
+                                ),
+                                Text(
+                                  state.message,
+                                  style: TextStyle(
+                                    color: Colors.red.shade600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
                     ),
                   ],
                 ),

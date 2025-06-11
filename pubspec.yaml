@@ -43,11 +43,12 @@ dependencies:
   speech_to_text: ^6.5.1
   permission_handler: ^11.2.0
   google_sign_in: ^6.2.1
-  http: ^0.13.3
   path_provider: ^2.1.2
   internet_connection_checker: ^1.0.0+1
-  dialogflow_flutter: ^1.0.0
   equatable: ^2.0.7
+  provider: ^6.1.1
+  graphql_flutter: ^5.2.0-beta.8
+  shared_preferences: ^2.5.3
 
 dev_dependencies:
   flutter_test:

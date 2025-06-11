@@ -1,4 +1,4 @@
-// lib/presentation/pages/home/chat_page.dart (modificado)
+// lib/presentation/pages/home/chat_page.dart (actualizado)
 
 import 'package:flutter/material.dart';
 import '../../../core/controllers/voice_chat_controller.dart';
@@ -25,7 +25,7 @@ class _ChatPageState extends State<ChatPage> {
     super.initState();
     _voiceChatController = VoiceChatController(
       speechService: di.sl<SpeechService>(),
-      dialogflowService: di.sl<DialogflowService>(),
+      dialogflowService: di.sl<SimpleDialogflowService>(),
       ttsService: di.sl<TTSService>(),
     );
   }
@@ -97,7 +97,7 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Puedes preguntarme sobre la disponibilidad de libros, hacer reservas o consultar información general de la biblioteca.',
+                      'Puedes preguntarme sobre la disponibilidad de libros, navegar por la aplicación, o consultar información sobre préstamos y reservas.',
                       style: TextStyle(fontSize: 14),
                     ),
                     const SizedBox(height: 8),
@@ -110,9 +110,10 @@ class _ChatPageState extends State<ChatPage> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text('• "¿Tienen disponible Cien Años de Soledad?"'),
-                    const Text('• "¿Cuáles son los horarios de la biblioteca?"'),
-                    const Text('• "Quiero reservar un libro de Gabriel García Márquez"'),
+                    const Text('• "Buscar libros de Gabriel García Márquez"'),
+                    const Text('• "Mostrar mis préstamos"'),
+                    const Text('• "Ir a mis reservas"'),
+                    const Text('• "Navegar a búsqueda"'),
                   ],
                 ),
               ),

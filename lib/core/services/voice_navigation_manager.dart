@@ -1,14 +1,13 @@
-// lib/core/services/voice_navigation_manager.dart (actualizado)
+// lib/core/services/voice_navigation_manager.dart (CORREGIDO)
 
-import 'package:biblio_app/core/services/dialogflow_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../presentation/bloc/book/book_bloc.dart';
+import '../services/dialogflow_service.dart';
 import '../services/speech_service.dart';
 import '../services/tts_service.dart';
-import '../utils/device_config_checker.dart';
 import '../utils/permission_handler.dart';
-import '../../app.dart'; // Importar para acceder al navigatorKey
+import '../../app.dart';
 
 class VoiceNavigationManager {
   final SpeechService _speechService;
@@ -29,7 +28,6 @@ class VoiceNavigationManager {
   Stream<bool> get listeningStatus => _speechService.listeningStatus;
 
   Future<void> _initialize() async {
-    // Mostrar guía de configuración en los logs
     print("🔧 Iniciando configuración de reconocimiento de voz...");
     
     // Inicializar el servicio de reconocimiento de voz
@@ -53,57 +51,62 @@ class VoiceNavigationManager {
       }
     });
     
-    // Suscribirse al stream de respuestas del servicio simple de DialogFlow
+    // Suscribirse al stream de respuestas de DialogFlow
     _dialogflowService.onResponse.listen((response) {
       _handleDialogflowResponse(response);
     });
     
-    print("✅ Configuración de voz completada con servicio local");
+    print("✅ Configuración de voz completada");
   }
   
   void toggleListening() {
     if (_speechService.isListening) {
       _speechService.stopListening();
       _isActive = false;
-      _ttsService.stop(); // Parar TTS si está hablando
+      _ttsService.stop();
     } else {
       _startListeningWithDelay();
     }
   }
   
-  // Método para coordinar TTS y Speech Recognition
+  // CORREGIDO: Coordinar TTS y Speech Recognition correctamente
   Future<void> _startListeningWithDelay() async {
     _isActive = true;
     
-    // 1. Primero parar cualquier TTS que esté reproduciéndose
+    // 1. Parar cualquier TTS que esté reproduciéndose
     await _ttsService.stop();
     
-    // 2. Reproducir mensaje de confirmación y esperar a que termine
+    // 2. Reproducir mensaje de confirmación y ESPERAR a que termine completamente
     await _ttsService.speak("Te escucho");
     
-    // 3. Inmediatamente después de que termine el TTS, iniciar reconocimiento
-    print("🎤 Iniciando reconocimiento inmediatamente después del TTS");
+    // 3. Agregar delay adicional para asegurar que TTS terminó
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    // 4. Iniciar reconocimiento
+    print("🎤 Iniciando reconocimiento después de TTS");
     await _speechService.startListening();
     
-    // 4. Verificar si realmente inició después de un momento breve
+    // 5. Verificar que inició correctamente
     await Future.delayed(const Duration(milliseconds: 200));
     if (!_speechService.isListening) {
-      print("❌ El reconocimiento no inició, reintentando una vez...");
+      print("❌ Reintentando reconocimiento...");
       await Future.delayed(const Duration(milliseconds: 300));
       await _speechService.startListening();
     }
   }
   
   void _processVoiceCommand(String text) {
-    // Verificar si el texto parece inglés (problema común)
-    if (_isTextEnglish(text)) {
+    // Verificar si el texto parece inglés
+   /* if (_isTextEnglish(text)) {
       print("🚨 DETECTADO TEXTO EN INGLÉS: $text");
       DeviceConfigChecker.printConfigurationGuide();
       _ttsService.speak("He detectado que reconocí en inglés. Por favor revisa la configuración de idioma de tu dispositivo.");
       return;
-    }
+    }*/
     
-    // Enviar el texto en español al servicio simple de DialogFlow
+    print("🗣️ Comando de voz recibido: $text");
+    
+    // Enviar el texto a DialogFlow
     _dialogflowService.detectIntent(text);
   }
   
@@ -124,89 +127,157 @@ class VoiceNavigationManager {
     return false;
   }
   
-  void _handleDialogflowResponse(Map<String, dynamic> response) {
-    final String action = response['action'];
-    final message = response['message'];
-    final parameters = response['parameters'];
+  // CORREGIDO: Manejo de respuestas con palabras clave y navegación
+void _handleDialogflowResponse(Map<String, dynamic> response) {
+  final String action = response['action'] ?? '';
+  final String message = response['message'] ?? '';
+  
+  // CORREGIDO: Convertir correctamente el tipo de parameters
+  final Map<String, dynamic> parameters = response['parameters'] != null 
+      ? Map<String, dynamic>.from(response['parameters']) 
+      : <String, dynamic>{};
     
-    print("Acción a ejecutar: $action");
-    print("Mensaje: $message");
-    print("Parámetros: $parameters");
+    print("📱 Respuesta de DialogFlow:");
+    print("   Acción detectada: $action");
+    print("   Mensaje: $message");
+    print("   Parámetros: $parameters");
     
-    // Dar feedback al usuario
-    _ttsService.speak(message);
-    
-    // Ejecutar la acción correspondiente
-    switch (action) {
-      case 'BIENVENIDA':
-        // No necesita acción específica, solo feedback
-        break;
-      
-      case 'MOSTRAR_LIBROS':
-        _navigateToPage('/search');
-        _context.read<BookBloc>().add(const GetBooksEvent());
-        break;
-      
-      case 'BUSCAR':
-        final searchTerm = parameters['value'] ?? '';
-        _navigateToPage('/search');
-        _context.read<BookBloc>().add(GetBooksEvent(query: searchTerm));
-        break;
-      
-      case 'CATEGORIAS':
-        _navigateToPage('/search');
-        break;
-      
-      case 'FILTRAR_CATEGORIA':
-        final category = parameters['value'] ?? '';
-        _navigateToPage('/search');
-        _context.read<BookBloc>().add(GetBooksEvent(category: category));
-        break;
-      
-      case 'PRESTAMOS':
-        _navigateToPage('/loans');
-        break;
-      
-      case 'RESERVAS':
-        _navigateToPage('/reservations');
-        break;
-      
-      case 'PERFIL':
-        _navigateToPage('/profile');
-        break;
-      
-      case 'NAVEGAR':
-        final page = parameters['value'] ?? '';
-        _handleNavigationCommand(page);
-        break;
-      
-      case 'DETALLE_LIBRO':
-        // Para este necesitaríamos buscar el libro primero
-        final bookTitle = parameters['value'] ?? '';
-        _searchBookAndNavigateToDetail(bookTitle);
-        break;
-      
-      case 'RESERVAR':
-        final bookTitle = parameters['value'] ?? '';
-        _searchBookAndReserve(bookTitle);
-        break;
-      
-      case 'AYUDA':
-        // No necesita navegación, solo el mensaje TTS
-        break;
-      
-      case 'DESPEDIDA':
-        // Parar el asistente después de la despedida
-        _isActive = false;
-        _speechService.stopListening();
-        break;
-      
-      default:
-        // Acción no reconocida - el mensaje ya se reproduce por TTS
-        break;
-    }
+    // CORREGIDO: Primero reproducir el mensaje, LUEGO ejecutar navegación
+    _speakAndThenExecuteAction(message, action, parameters);
   }
   
+  // NUEVO: Método para coordinar TTS y navegación
+  Future<void> _speakAndThenExecuteAction(String message, String action, Map<String, dynamic> parameters) async {
+    // 1. Parar el reconocimiento de voz mientras procesamos
+    _speechService.stopListening();
+    _isActive = false;
+    
+    // 2. Reproducir mensaje y ESPERAR a que termine
+    if (message.isNotEmpty) {
+      await _ttsService.speak(message);
+      
+      // 3. Esperar un poco más para asegurar que terminó
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+    
+    // 4. AHORA ejecutar la acción de navegación
+    _executeAction(action, parameters);
+  }
+  
+  // CORREGIDO: Ejecutar acciones basadas en palabras clave
+void _executeAction(String action, Map<String, dynamic> parameters) {
+  print("🎯 Ejecutando acción: $action");
+  
+  // CORREGIDO: Detectar acciones tanto del formato nuevo como del formato de palabra clave
+  String normalizedAction = action.toUpperCase();
+  
+  // Si viene del formato nuevo de GraphQL, mapear a las acciones conocidas
+  if (normalizedAction == 'INPUT.WELCOME') {
+    normalizedAction = 'BIENVENIDA';
+  } else if (normalizedAction == 'NAVEGAR_BUSQUEDA') {
+    normalizedAction = 'BUSCAR';
+  } else if (normalizedAction == 'MOSTRAR_PRESTAMOS') {
+    normalizedAction = 'PRESTAMOS';
+  } else if (normalizedAction == 'MOSTRAR_RESERVAS') {
+    normalizedAction = 'RESERVAS';
+  } else if (normalizedAction == 'MOSTRAR_PERFIL') {
+    normalizedAction = 'PERFIL';
+  } else if (normalizedAction == 'MOSTRAR_CATEGORIAS') {
+    normalizedAction = 'CATEGORIAS';
+  } else if (normalizedAction == 'MOSTRAR_AYUDA') {
+    normalizedAction = 'AYUDA';
+  }
+  
+  print("🎯 Acción normalizada: $normalizedAction");
+  
+  switch (normalizedAction) {
+    case 'BIENVENIDA':
+      // Solo feedback, no navegación
+      print("👋 Mensaje de bienvenida recibido");
+      break;
+    
+    case 'MOSTRAR_LIBROS':
+    case 'BUSCAR':
+      print("📚 Navegando a búsqueda");
+      _navigateToPage('/search');
+      
+      final searchTerm = parameters['value']?.toString() ?? '';
+      if (searchTerm.isNotEmpty) {
+        print("🔍 Término de búsqueda: $searchTerm");
+        _context.read<BookBloc>().add(GetBooksEvent(query: searchTerm));
+      } else {
+        _context.read<BookBloc>().add(const GetBooksEvent());
+      }
+      break;
+    
+    case 'CATEGORIAS':
+      print("📂 Navegando a categorías");
+      _navigateToPage('/search');
+      break;
+    
+    case 'FILTRAR_CATEGORIA':
+      print("🏷️ Filtrando por categoría");
+      final category = parameters['value']?.toString() ?? '';
+      _navigateToPage('/search');
+      if (category.isNotEmpty) {
+        _context.read<BookBloc>().add(GetBooksEvent(category: category));
+      }
+      break;
+    
+    case 'PRESTAMOS':
+      print("📋 Navegando a préstamos");
+      _navigateToPage('/loans');
+      break;
+    
+    case 'RESERVAS':
+      print("🔖 Navegando a reservas");
+      _navigateToPage('/reservations');
+      break;
+    
+    case 'PERFIL':
+      print("👤 Navegando a perfil");
+      _navigateToPage('/profile');
+      break;
+    
+    case 'NAVEGAR':
+      final page = parameters['value']?.toString() ?? '';
+      print("🧭 Navegando a: $page");
+      _handleNavigationCommand(page);
+      break;
+    
+    case 'DETALLE_LIBRO':
+      final bookTitle = parameters['value']?.toString() ?? '';
+      print("📖 Buscando detalles del libro: $bookTitle");
+      _searchBookAndNavigateToDetail(bookTitle);
+      break;
+    
+    case 'RESERVAR':
+      final bookTitle = parameters['value']?.toString() ?? '';
+      print("📚 Reservando libro: $bookTitle");
+      _searchBookAndReserve(bookTitle);
+      break;
+    
+    case 'AYUDA':
+      print("❓ Mostrando ayuda");
+      // Solo mensaje, no navegación
+      break;
+    
+    case 'DESPEDIDA':
+      print("👋 Despedida recibida");
+      // Parar el asistente
+      _isActive = false;
+      _speechService.stopListening();
+      break;
+    
+    case 'RESPUESTA_INFORMATIVA':
+      print("💬 Respuesta informativa, no requiere navegación");
+      break;
+    
+    default:
+      print("❓ Acción no reconocida: $normalizedAction (original: $action)");
+      break;
+  }
+}
   void _handleNavigationCommand(String page) {
     switch (page.toLowerCase()) {
       case 'inicio':
@@ -230,31 +301,27 @@ class VoiceNavigationManager {
         _navigateToPage('/profile');
         break;
       default:
-        _ttsService.speak("No reconozco esa página");
+        print("❌ Página no reconocida: $page");
+        break;
     }
   }
   
   void _navigateToPage(String route) {
-    // Usar el GlobalKey del navigator en lugar del contexto local
     final NavigatorState? navigator = navigatorKey.currentState;
     if (navigator != null) {
       navigator.pushNamed(route);
+      print("✅ Navegación exitosa a: $route");
     } else {
-      print("Navigator no disponible");
+      print("❌ Navigator no disponible");
     }
   }
   
-  // Método auxiliar para buscar un libro por título y navegar a su detalle
   void _searchBookAndNavigateToDetail(String bookTitle) {
-    // Idealmente, habría que implementar una búsqueda específica por título
-    // Por ahora, simplemente hacemos una búsqueda general
     _navigateToPage('/search');
     _context.read<BookBloc>().add(GetBooksEvent(query: bookTitle));
   }
   
-  // Método auxiliar para buscar un libro y reservarlo
   void _searchBookAndReserve(String bookTitle) {
-    // Similar al método anterior
     _navigateToPage('/search');
     _context.read<BookBloc>().add(GetBooksEvent(query: bookTitle));
   }

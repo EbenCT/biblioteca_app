@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+import '../../core/services/graphql_service.dart';
 import '../../domain/entities/entities.dart';
 import '../../domain/repositories/repositories.dart';
 import '../mock_data.dart';
@@ -434,5 +435,134 @@ class ChatRepositoryImpl implements ChatRepository {
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
+  }
+}
+
+
+class GraphQLChatRepositoryImpl implements ChatRepository {
+  final GraphQLService _graphQLService;
+
+  GraphQLChatRepositoryImpl(this._graphQLService);
+
+  @override
+  Future<Either<Failure, String>> sendMessage(String message) async {
+    try {
+      print('🤖 Enviando mensaje a Dialogflow via GraphQL: $message');
+      
+      const String sendChatMessageMutation = '''
+        mutation SendChatMessage(\$input: ChatInput!) {
+          sendChatMessage(input: \$input) {
+            message
+            intent
+            action
+            confidence
+            parameters
+            success
+          }
+        }
+      ''';
+      
+      final result = await _graphQLService.mutate(
+        sendChatMessageMutation,
+        variables: {
+          'input': {
+            'message': message,
+            'userId': 'mobile_user_${DateTime.now().millisecondsSinceEpoch}',
+          },
+        },
+      );
+
+      if (result.hasException) {
+        print('❌ Error en GraphQL Chat: ${result.exception}');
+        return Left(ServerFailure(result.exception.toString()));
+      }
+
+      final data = result.data;
+      if (data == null || data['sendChatMessage'] == null) {
+        return Left(ServerFailure('No se recibió respuesta del chat'));
+      }
+
+      final chatResponse = data['sendChatMessage'];
+      
+      // Log de la respuesta completa para debugging
+      print('📥 Respuesta de Dialogflow:');
+      print('   Mensaje: ${chatResponse['message']}');
+      print('   Intent: ${chatResponse['intent']}');
+      print('   Acción: ${chatResponse['action']}');
+      print('   Confianza: ${chatResponse['confidence']}');
+      print('   Éxito: ${chatResponse['success']}');
+      
+      final responseMessage = chatResponse['message'] as String? ?? 
+          'Lo siento, no pude procesar tu solicitud.';
+      
+      return Right(responseMessage);
+      
+    } catch (e) {
+      print('❌ Error en GraphQL Chat Repository: $e');
+      return Left(ServerFailure('Error de conexión con el servidor de chat'));
+    }
+  }
+}
+
+// MODIFICAR la clase ChatRepositoryImpl existente para agregar fallback
+class ChatRepositoryImplWithFallback implements ChatRepository {
+  final GraphQLChatRepositoryImpl _graphqlRepo;
+  final ChatRepositoryImpl _localRepo;
+  
+  // Control de estado para fallback
+  bool _graphqlAvailable = true;
+  DateTime? _lastFailureTime;
+  static const Duration _retryDelay = Duration(minutes: 2);
+
+  ChatRepositoryImplWithFallback(this._graphqlRepo, this._localRepo);
+
+  @override
+  Future<Either<Failure, String>> sendMessage(String message) async {
+    // Verificar si debemos intentar GraphQL
+    if (!_shouldTryGraphQL()) {
+      print('🔄 Usando servicio local (GraphQL no disponible)');
+      return _localRepo.sendMessage(message);
+    }
+
+    // Intentar GraphQL primero
+    final graphqlResult = await _graphqlRepo.sendMessage(message);
+    
+    return graphqlResult.fold(
+      (failure) {
+        print('⚠️ GraphQL falló, usando servicio local como fallback');
+        _markGraphQLFailure();
+        return _localRepo.sendMessage(message);
+      },
+      (response) {
+        print('✅ GraphQL exitoso, respuesta de Dialogflow recibida');
+        _markGraphQLSuccess();
+        return Right(response);
+      },
+    );
+  }
+
+  bool _shouldTryGraphQL() {
+    if (_graphqlAvailable) return true;
+    
+    if (_lastFailureTime != null) {
+      final timeSinceFailure = DateTime.now().difference(_lastFailureTime!);
+      if (timeSinceFailure > _retryDelay) {
+        print('🔄 Reintentando GraphQL después de ${timeSinceFailure.inMinutes} minutos');
+        _graphqlAvailable = true;
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  void _markGraphQLFailure() {
+    _graphqlAvailable = false;
+    _lastFailureTime = DateTime.now();
+  }
+
+  void _markGraphQLSuccess() {
+    _graphqlAvailable = true;
+    _lastFailureTime = null;
   }
 }

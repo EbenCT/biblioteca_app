@@ -1,4 +1,4 @@
-// lib/core/services/tts_service.dart (mejorado con async/await)
+// lib/core/services/tts_service.dart (MEJORADO - async/await correcto)
 
 import 'package:flutter_tts/flutter_tts.dart';
 import 'dart:async';
@@ -52,81 +52,135 @@ class TTSService {
       
       // Configurar otros parámetros
       await _flutterTts.setPitch(1.0);
-      await _flutterTts.setSpeechRate(0.6); // Ligeramente más rápido
+      await _flutterTts.setSpeechRate(0.5); // Más lento para mejor comprensión
       await _flutterTts.setVolume(0.8);
       
-      // Configurar callbacks con Completer para async/await
+      // CORREGIDO: Configurar callbacks correctamente
       _flutterTts.setCompletionHandler(() {
+        print("✅ TTS completado");
         _isSpeaking = false;
-        print("TTS completado");
         _speechCompleter?.complete();
         _speechCompleter = null;
       });
       
       _flutterTts.setStartHandler(() {
+        print("🔊 TTS iniciado");
         _isSpeaking = true;
-        print("TTS iniciado");
       });
       
       _flutterTts.setErrorHandler((message) {
+        print("❌ Error en TTS: $message");
         _isSpeaking = false;
-        print("Error en TTS: $message");
         _speechCompleter?.completeError("TTS Error: $message");
         _speechCompleter = null;
       });
       
+      // NUEVO: Handler para cuando se cancela
+      _flutterTts.setCancelHandler(() {
+        print("🛑 TTS cancelado");
+        _isSpeaking = false;
+        _speechCompleter?.complete();
+        _speechCompleter = null;
+      });
+      
       _isInitialized = true;
-      print("TTS inicializado correctamente");
+      print("✅ TTS inicializado correctamente");
       
     } catch (e) {
-      print("Error inicializando TTS: $e");
+      print("❌ Error inicializando TTS: $e");
       _isInitialized = false;
     }
   }
 
+  // CORREGIDO: Método speak que realmente espera a que termine
   Future<void> speak(String text) async {
     if (!_isInitialized) {
+      print("⚠️ TTS no inicializado, inicializando...");
       await _init();
+    }
+    
+    if (text.trim().isEmpty) {
+      print("⚠️ Texto vacío para TTS");
+      return;
     }
     
     // Parar cualquier TTS anterior
     if (_isSpeaking) {
+      print("🛑 Parando TTS anterior...");
       await stop();
     }
     
     try {
-      print("TTS reproduciendo: $text");
+      print("🔊 TTS reproduciendo: '$text'");
       
       // Crear un completer para esperar a que termine
       _speechCompleter = Completer<void>();
       
+      // Iniciar TTS
       _isSpeaking = true;
-      await _flutterTts.speak(text);
+      final result = await _flutterTts.speak(text);
       
-      // Esperar a que termine de hablar
-      await _speechCompleter!.future;
+      if (result == 1) {
+        // TTS inició correctamente, esperar a que termine
+        await _speechCompleter!.future.timeout(
+          Duration(seconds: text.length ~/ 2 + 10), // Timeout basado en longitud del texto
+          onTimeout: () {
+            print("⏰ TTS timeout, forzando completado");
+            _isSpeaking = false;
+            _speechCompleter = null;
+          },
+        );
+      } else {
+        print("❌ TTS no pudo iniciar");
+        _isSpeaking = false;
+        _speechCompleter = null;
+      }
+      
+      print("✅ TTS completado para: '$text'");
       
     } catch (e) {
-      print("Error al reproducir TTS: $e");
+      print("❌ Error al reproducir TTS: $e");
       _isSpeaking = false;
+      _speechCompleter?.completeError(e);
       _speechCompleter = null;
     }
   }
 
+  // CORREGIDO: Método stop que realmente para el TTS
   Future<void> stop() async {
     if (_isSpeaking) {
-      await _flutterTts.stop();
-      _isSpeaking = false;
-      _speechCompleter?.complete(); // Completar si estaba esperando
-      _speechCompleter = null;
-      print("TTS detenido");
+      print("🛑 Deteniendo TTS...");
+      
+      try {
+        await _flutterTts.stop();
+        _isSpeaking = false;
+        
+        // Completar el completer si existe
+        if (_speechCompleter != null && !_speechCompleter!.isCompleted) {
+          _speechCompleter!.complete();
+        }
+        _speechCompleter = null;
+        
+        print("✅ TTS detenido");
+        
+        // Agregar delay para asegurar que se detuvo completamente
+        await Future.delayed(const Duration(milliseconds: 100));
+        
+      } catch (e) {
+        print("❌ Error al detener TTS: $e");
+        _isSpeaking = false;
+        _speechCompleter = null;
+      }
     }
   }
 
   bool get isSpeaking => _isSpeaking;
 
   void dispose() {
+    print("🗑️ Limpiando TTS...");
     _flutterTts.stop();
     _speechCompleter?.complete();
+    _speechCompleter = null;
+    _isSpeaking = false;
   }
 }

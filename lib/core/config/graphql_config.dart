@@ -4,7 +4,7 @@ class GraphQLConfig {
   // Configuration for GraphQL endpoint
   // Update these values according to your backend setup
   
-  static const String laptopIp = '192.168.100.4'; // Tu IP real
+  static const String laptopIp = '3.15.211.154'; // Tu IP real
   static const String port = '8080';
   
   // Different endpoints for different scenarios

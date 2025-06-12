@@ -118,6 +118,19 @@ class GraphQLQueries {
       }
     }
   ''';
+    // Chat Queries
+  static const String sendChatMessage = '''
+    mutation SendChatMessage(\$input: ChatInput!) {
+      sendChatMessage(input: \$input) {
+        message
+        intent
+        action
+        confidence
+        parameters
+        success
+      }
+    }
+  ''';
 
   // Ejemplar Queries
   static const String getEjemplares = '''

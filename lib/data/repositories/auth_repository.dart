@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field
+
 import 'package:dartz/dartz.dart';
 import '../../core/errors/failures.dart';
 import '../../core/config/graphql_config.dart';

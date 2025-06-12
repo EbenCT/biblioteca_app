@@ -107,9 +107,12 @@ Future<void> init() async {
     () => NotificationRepositoryImpl(),
   );
 
-  sl.registerLazySingleton<ChatRepository>(
-    () => ChatRepositoryImpl(),
-  );
+sl.registerLazySingleton<ChatRepository>(
+  () => ChatRepositoryImplWithFallback(
+    GraphQLChatRepositoryImpl(sl<GraphQLService>()),
+    ChatRepositoryImpl(),
+  ),
+);
 
   // Voice Services
   sl.registerLazySingleton(() => SimpleDialogflowService());

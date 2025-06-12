@@ -1,3 +1,5 @@
+// ignore_for_file: dead_code
+
 import 'package:dartz/dartz.dart';
 import '../../core/errors/failures.dart';
 import '../../core/services/graphql_service.dart';

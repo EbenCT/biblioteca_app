@@ -1,222 +1,110 @@
-// Servicio de DialogFlow simplificado sin dependencia externa
-// Para mantener la funcionalidad de navegación por voz temporalmente
+// lib/core/services/dialogflow_service.dart
+// REEMPLAZAR TODO EL CONTENIDO del archivo con esto:
 
 import 'dart:async';
+import '../../domain/repositories/repositories.dart';
+import '../../di/injection_container.dart' as di;
 
 class SimpleDialogflowService {
+  final ChatRepository _chatRepository;
   final StreamController<Map<String, dynamic>> _responseStreamController = 
       StreamController<Map<String, dynamic>>.broadcast();
 
   Stream<Map<String, dynamic>> get onResponse => _responseStreamController.stream;
 
-  SimpleDialogflowService() {
-    print("SimpleDialogflowService inicializado - Simulando respuestas");
+  SimpleDialogflowService() : _chatRepository = di.sl<ChatRepository>() {
+    print("✅ SimpleDialogflowService inicializado con GraphQL + fallback local");
   }
 
   Future<void> detectIntent(String text) async {
-    print("Procesando texto localmente: $text");
+    print("🎤 Procesando texto con Dialogflow GraphQL: $text");
     
     try {
-      // Simular un pequeño delay como si fuera una llamada a la API
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Enviar mensaje al backend que tiene Dialogflow
+      final result = await _chatRepository.sendMessage(text);
       
-      // Procesar el texto localmente usando patrones simples
-      final response = _processTextLocally(text.toLowerCase());
-      
-      print("Respuesta local generada: ${response['message']}");
-      _responseStreamController.add(response);
+      result.fold(
+        (failure) {
+          print('❌ Error en Dialogflow: ${failure.message}');
+          _responseStreamController.add({
+            'action': 'ERROR',
+            'message': 'No pude entender eso. ¿Podrías repetirlo?',
+            'parameters': <String, dynamic>{}, // CORREGIDO: Tipo explícito
+            'intent': 'Error',
+            'confidence': 0.0,
+            'success': false,
+          });
+        },
+        (responseMessage) {
+          print('✅ Respuesta de Dialogflow: $responseMessage');
+          
+          // CORREGIDO: Extraer acción del mensaje usando el formato "ACCION: mensaje"
+          final action = _extractActionFromMessage(responseMessage);
+          
+          _responseStreamController.add({
+            'action': action,
+            'message': responseMessage,
+            'parameters': <String, dynamic>{}, // CORREGIDO: Tipo explícito
+            'intent': 'DialogflowIntent',
+            'confidence': 1.0,
+            'success': true,
+          });
+        },
+      );
       
     } catch (e) {
-      print('Error procesando intent localmente: $e');
+      print('❌ Error en detectIntent: $e');
       _responseStreamController.add({
         'action': 'ERROR',
-        'message': 'No pude entender eso. ¿Podrías repetirlo?',
-        'parameters': {}
+        'message': 'Ocurrió un error al procesar tu solicitud.',
+        'parameters': <String, dynamic>{}, // CORREGIDO: Tipo explícito
+        'intent': 'Error',
+        'confidence': 0.0,
+        'success': false,
       });
     }
   }
 
-  Map<String, dynamic> _processTextLocally(String text) {
-    // Patrones de reconocimiento básicos
-    Map<String, dynamic> result = {
-      'action': '',
-      'message': '',
-      'parameters': {}
-    };
-
-    // Detectar saludos y bienvenida
-    if (_containsAny(text, ['hola', 'buenas', 'buenos días', 'buenas tardes', 'hey'])) {
-      result['action'] = 'BIENVENIDA';
-      result['message'] = 'Hola, soy el asistente virtual de la biblioteca UAGRM. ¿En qué puedo ayudarte?';
-    }
-    
-    // Detectar búsquedas de libros
-    else if (_containsAny(text, ['buscar', 'libro', 'libros', 'busco', 'encontrar'])) {
-      result['action'] = 'BUSCAR';
-      result['message'] = 'Te ayudo a buscar libros. Abriendo la sección de búsqueda.';
-      
-      // Extraer término de búsqueda
-      String searchTerm = _extractSearchTerm(text);
-      if (searchTerm.isNotEmpty) {
-        result['parameters'] = {'value': searchTerm};
-        result['message'] = 'Buscando "$searchTerm" en nuestro catálogo.';
+  // NUEVO: Método para extraer acción del formato "ACCION: mensaje"
+  String _extractActionFromMessage(String message) {
+    if (message.contains(':')) {
+      final parts = message.split(':');
+      if (parts.isNotEmpty) {
+        final action = parts[0].trim().toUpperCase();
+        print('🎯 Acción extraída del mensaje: $action');
+        return action;
       }
     }
     
-    // Detectar solicitudes de categorías
-    else if (_containsAny(text, ['categoría', 'categorias', 'tipos', 'clasificación'])) {
-      result['action'] = 'CATEGORIAS';
-      result['message'] = 'Te muestro las categorías disponibles.';
-    }
-    
-    // Detectar navegación a préstamos
-    else if (_containsAny(text, ['préstamos', 'prestamos', 'mis libros', 'libros prestados'])) {
-      result['action'] = 'PRESTAMOS';
-      result['message'] = 'Abriendo tu historial de préstamos.';
-    }
-    
-    // Detectar navegación a reservas
-    else if (_containsAny(text, ['reservas', 'reservar', 'mis reservas'])) {
-      result['action'] = 'RESERVAS';
-      result['message'] = 'Abriendo tus reservas.';
-    }
-    
-    // Detectar navegación al perfil
-    else if (_containsAny(text, ['perfil', 'mi perfil', 'cuenta', 'información personal'])) {
-      result['action'] = 'PERFIL';
-      result['message'] = 'Abriendo tu perfil.';
-    }
-    
-    // Detectar navegación general
-    else if (_containsAny(text, ['ir a', 'abrir', 'navegar', 'mostrar'])) {
-      String destination = _extractNavigationDestination(text);
-      if (destination.isNotEmpty) {
-        result['action'] = 'NAVEGAR';
-        result['message'] = 'Navegando a $destination.';
-        result['parameters'] = {'value': destination};
-      }
-    }
-    
-    // Detectar solicitudes de información sobre libros específicos
-    else if (_containsAny(text, ['información', 'detalles', 'sobre el libro', 'que es'])) {
-      result['action'] = 'DETALLE_LIBRO';
-      result['message'] = 'Te ayudo a encontrar información sobre ese libro.';
-      String bookTitle = _extractBookTitle(text);
-      if (bookTitle.isNotEmpty) {
-        result['parameters'] = {'value': bookTitle};
-      }
-    }
-    
-    // Detectar solicitudes de reserva
-    else if (_containsAny(text, ['quiero reservar', 'reservar libro', 'hacer reserva'])) {
-      result['action'] = 'RESERVAR';
-      result['message'] = 'Te ayudo a reservar ese libro.';
-      String bookTitle = _extractBookTitle(text);
-      if (bookTitle.isNotEmpty) {
-        result['parameters'] = {'value': bookTitle};
-      }
-    }
-    
-    // Detectar solicitudes de ayuda
-    else if (_containsAny(text, ['ayuda', 'help', 'qué puedes hacer', 'comandos'])) {
-      result['action'] = 'AYUDA';
-      result['message'] = 'Puedo ayudarte a buscar libros, navegar por la aplicación, ver tus préstamos y reservas. ¿Qué necesitas?';
-    }
-    
-    // Detectar despedidas
-    else if (_containsAny(text, ['adiós', 'chao', 'hasta luego', 'bye', 'gracias'])) {
-      result['action'] = 'DESPEDIDA';
-      result['message'] = '¡Hasta luego! Si necesitas algo más, estaré aquí para ayudarte.';
-    }
-    
-    // Respuesta por defecto
-    else {
-      result['action'] = 'DEFAULT';
-      result['message'] = 'No estoy seguro de entender eso. ¿Podrías intentar preguntarme sobre buscar libros, ver préstamos o navegar por la aplicación?';
-    }
-
-    return result;
+    // Si no hay ":", inferir de las palabras clave
+    final inferredAction = _inferActionFromMessage(message);
+    print('🎯 Acción inferida: $inferredAction');
+    return inferredAction;
   }
 
-  bool _containsAny(String text, List<String> keywords) {
-    return keywords.any((keyword) => text.contains(keyword));
-  }
-
-  String _extractSearchTerm(String text) {
-    // Patrones para extraer términos de búsqueda
-    List<String> searchPrefixes = [
-      'buscar ',
-      'busco ',
-      'libro ',
-      'libros ',
-      'encontrar ',
-      'quiero ',
-      'necesito '
-    ];
+  // MEJORADO: Método para inferir acción basado en palabras clave
+  String _inferActionFromMessage(String message) {
+    final lowerMessage = message.toLowerCase();
     
-    for (String prefix in searchPrefixes) {
-      int index = text.indexOf(prefix);
-      if (index != -1) {
-        String remaining = text.substring(index + prefix.length).trim();
-        // Limpiar palabras comunes al final
-        remaining = remaining.replaceAll(RegExp(r'\b(por favor|porfavor|gracias)\b'), '').trim();
-        if (remaining.isNotEmpty) {
-          return remaining;
-        }
-      }
+    if (lowerMessage.contains('bienvenido') || lowerMessage.contains('hola')) {
+      return 'BIENVENIDA';
+    } else if (lowerMessage.contains('búsqueda') || lowerMessage.contains('buscar') || lowerMessage.contains('buscar libros')) {
+      return 'BUSCAR';
+    } else if (lowerMessage.contains('préstamos') || lowerMessage.contains('prestamos')) {
+      return 'PRESTAMOS';
+    } else if (lowerMessage.contains('reservas')) {
+      return 'RESERVAS';
+    } else if (lowerMessage.contains('perfil')) {
+      return 'PERFIL';
+    } else if (lowerMessage.contains('categorías') || lowerMessage.contains('categorias')) {
+      return 'CATEGORIAS';
+    } else if (lowerMessage.contains('ayuda')) {
+      return 'AYUDA';
+    } else if (lowerMessage.contains('adiós') || lowerMessage.contains('hasta luego') || lowerMessage.contains('bye')) {
+      return 'DESPEDIDA';
     }
     
-    return '';
-  }
-
-  String _extractNavigationDestination(String text) {
-    Map<String, String> destinations = {
-      'inicio': 'inicio',
-      'home': 'inicio',
-      'búsqueda': 'búsqueda',
-      'busqueda': 'búsqueda',
-      'search': 'búsqueda',
-      'préstamos': 'préstamos',
-      'prestamos': 'préstamos',
-      'loans': 'préstamos',
-      'reservas': 'reservas',
-      'reservations': 'reservas',
-      'perfil': 'perfil',
-      'profile': 'perfil',
-      'chat': 'chat',
-    };
-    
-    for (String key in destinations.keys) {
-      if (text.contains(key)) {
-        return destinations[key]!;
-      }
-    }
-    
-    return '';
-  }
-
-  String _extractBookTitle(String text) {
-    // Intentar extraer título de libro de frases comunes
-    List<String> patterns = [
-      'libro ',
-      'sobre ',
-      'de ',
-      'llamado ',
-      'titulado '
-    ];
-    
-    for (String pattern in patterns) {
-      int index = text.indexOf(pattern);
-      if (index != -1) {
-        String remaining = text.substring(index + pattern.length).trim();
-        remaining = remaining.replaceAll(RegExp(r'\b(por favor|porfavor|gracias)\b'), '').trim();
-        if (remaining.isNotEmpty) {
-          return remaining;
-        }
-      }
-    }
-    
-    return '';
+    return 'RESPUESTA_INFORMATIVA';
   }
   
   void dispose() {

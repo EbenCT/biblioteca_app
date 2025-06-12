@@ -1,11 +1,13 @@
+// lib/core/config/recommendations_config.dart
+
 import 'dart:io';
 
-class GraphQLConfig {
-  // Configuration for GraphQL endpoint
-  // Update these values according to your backend setup
+class RecommendationsConfig {
+  // Configuration for Recommendations GraphQL endpoint
+  // Update these values according to your Python backend setup
   
   static const String laptopIp = '192.168.91.243'; // Tu IP real
-  static const String port = '8080';
+  static const String port = '8000'; // Puerto del backend Python
   
   // Different endpoints for different scenarios
   static const String localhostEndpoint = 'http://localhost:$port/graphql';
@@ -34,41 +36,9 @@ class GraphQLConfig {
     }
   }
   
-  // Método para detectar si es emulador (opcional, para mayor precisión)
-  static String getEndpointForEnvironment({bool isEmulator = false}) {
-    if (isEmulator) {
-      if (Platform.isAndroid) {
-        return androidEmulatorEndpoint;
-      } else if (Platform.isIOS) {
-        return iosSimulatorEndpoint;
-      }
-    }
-    
-    // Para dispositivos físicos, siempre usar la IP real
-    return physicalDeviceEndpoint;
-  }
-  
-  // Authentication configuration
-  static const bool requiresAuth = false;
-  static const String authHeaderName = 'Authorization';
-  static const String authTokenPrefix = 'Bearer ';
-  
-  // Query configuration
-  static const int defaultPageSize = 20;
-  static const int maxPageSize = 100;
-  
-  // Cache configuration
-  static const Duration defaultCacheDuration = Duration(minutes: 5);
-  static const bool enableOfflineCache = true;
-  
-  // Error handling configuration
-  static const bool enableRetryOnError = true;
-  static const int maxRetryAttempts = 3;
-  static const Duration retryDelay = Duration(seconds: 2);
-  
   // Debug information
   static void printConnectionInfo() {
-    print('🌐 GraphQL Configuration:');
+    print('🤖 Recommendations Service Configuration:');
     print('📱 Platform: ${Platform.operatingSystem}');
     print('🔗 Endpoint: ${graphqlEndpoint}');
     print('💻 Laptop IP: $laptopIp');
@@ -76,8 +46,8 @@ class GraphQLConfig {
   }
 }
 
-// Environment-specific configurations
-class GraphQLEnvironment {
+// Environment-specific configurations for recommendations
+class RecommendationsEnvironment {
   static const String development = 'development';
   static const String staging = 'staging';
   static const String production = 'production';
@@ -87,13 +57,13 @@ class GraphQLEnvironment {
   static String get endpoint {
     switch (currentEnvironment) {
       case development:
-        return GraphQLConfig.graphqlEndpoint;
+        return RecommendationsConfig.graphqlEndpoint;
       case staging:
-        return 'https://your-staging-api.com/graphql';
+        return 'https://your-staging-recommendations.com/graphql';
       case production:
-        return 'https://your-production-api.com/graphql';
+        return 'https://your-production-recommendations.com/graphql';
       default:
-        return GraphQLConfig.graphqlEndpoint;
+        return RecommendationsConfig.graphqlEndpoint;
     }
   }
   

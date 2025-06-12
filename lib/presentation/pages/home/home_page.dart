@@ -40,15 +40,26 @@ class _HomePageState extends State<HomePage> {
     _loadInitialData();
   }
 
-  void _loadInitialData() {
+void _loadInitialData() {
     context.read<BookBloc>().add(const GetBooksEvent());
-    context.read<BookBloc>().add(GetRecommendedBooksEvent());
+    
+    // NUEVO: Cargar recomendaciones ML basadas en el usuario actual
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      print('👤 Loading ML recommendations for user: ${authState.user.id}');
+      context.read<BookBloc>().add(
+        GetMLRecommendationsEvent(userId: authState.user.id),
+      );
+    } else {
+      // Fallback a recomendaciones generales
+      context.read<BookBloc>().add(GetRecommendedBooksEvent());
+    }
     
     if (context.read<NotificationBloc>().state is NotificationInitial) {
       context.read<NotificationBloc>().add(GetNotificationsEvent());
     }
   }
-
+  
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;

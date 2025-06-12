@@ -1,8 +1,11 @@
+// lib/presentation/bloc/book/book_bloc.dart (ACTUALIZADO)
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../domain/entities/entities.dart';
 import '../../../domain/repositories/repositories.dart';
+import '../../../data/repositories/recommendations_repository.dart';
 
 // Events
 abstract class BookEvent extends Equatable {
@@ -39,6 +42,20 @@ class GetBookByIdEvent extends BookEvent {
 }
 
 class GetRecommendedBooksEvent extends BookEvent {}
+
+// NUEVO: Event para recomendaciones ML
+class GetMLRecommendationsEvent extends BookEvent {
+  final String userId;
+  final int limit;
+
+  const GetMLRecommendationsEvent({
+    required this.userId,
+    this.limit = 10,
+  });
+
+  @override
+  List<Object?> get props => [userId, limit];
+}
 
 class GetBookReviewsEvent extends BookEvent {
   final String bookId;
@@ -140,6 +157,22 @@ class RecommendedBooksLoaded extends BookState {
   List<Object?> get props => [books];
 }
 
+// NUEVO: State para recomendaciones ML
+class MLRecommendationsLoaded extends BookState {
+  final List<Book> books;
+  final bool isFromML;
+  final String? message;
+
+  const MLRecommendationsLoaded(
+    this.books, {
+    this.isFromML = true,
+    this.message,
+  });
+
+  @override
+  List<Object?> get props => [books, isFromML, message];
+}
+
 class BookReviewsLoaded extends BookState {
   final List<Review> reviews;
 
@@ -176,11 +209,16 @@ class BookError extends BookState {
 // Bloc
 class BookBloc extends Bloc<BookEvent, BookState> {
   final BookRepository bookRepository;
+  final RecommendationsRepository recommendationsRepository; // NUEVO
 
-  BookBloc({required this.bookRepository}) : super(BookInitial()) {
+  BookBloc({
+    required this.bookRepository,
+    required this.recommendationsRepository, // NUEVO
+  }) : super(BookInitial()) {
     on<GetBooksEvent>(_onGetBooks);
     on<GetBookByIdEvent>(_onGetBookById);
     on<GetRecommendedBooksEvent>(_onGetRecommendedBooks);
+    on<GetMLRecommendationsEvent>(_onGetMLRecommendations); // NUEVO
     on<GetBookReviewsEvent>(_onGetBookReviews);
     on<AddBookReviewEvent>(_onAddBookReview);
     on<UpdateBookReviewEvent>(_onUpdateBookReview);
@@ -218,6 +256,47 @@ class BookBloc extends Bloc<BookEvent, BookState> {
       (failure) => emit(BookError(failure.toString())),
       (books) => emit(RecommendedBooksLoaded(books)),
     );
+  }
+
+  // NUEVO: Manejar recomendaciones ML
+  Future<void> _onGetMLRecommendations(GetMLRecommendationsEvent event, Emitter<BookState> emit) async {
+    emit(BookLoading());
+    
+    try {
+      print('🤖 Requesting ML recommendations for user: ${event.userId}');
+      
+      final result = await recommendationsRepository.getRecommendations(
+        event.userId,
+        limit: event.limit,
+      );
+      
+      result.fold(
+        (failure) {
+          print('❌ ML recommendations failed: ${failure.message}');
+          emit(BookError('No se pudieron cargar las recomendaciones: ${failure.message}'));
+        },
+        (books) {
+          print('✅ ML recommendations loaded: ${books.length} books');
+          
+          // Determinar si son recomendaciones reales de ML o fallback
+          final isFromML = books.isNotEmpty && 
+                          books.first.description.contains('inteligencia artificial');
+          
+          final message = isFromML 
+              ? 'Recomendaciones personalizadas generadas por IA'
+              : 'Recomendaciones basadas en popularidad general';
+          
+          emit(MLRecommendationsLoaded(
+            books,
+            isFromML: isFromML,
+            message: message,
+          ));
+        },
+      );
+    } catch (e) {
+      print('❌ Error in ML recommendations: $e');
+      emit(BookError('Error al obtener recomendaciones: $e'));
+    }
   }
 
   Future<void> _onGetBookReviews(GetBookReviewsEvent event, Emitter<BookState> emit) async {
@@ -273,6 +352,15 @@ class BookBloc extends Bloc<BookEvent, BookState> {
     result.fold(
       (failure) => emit(BookError(failure.toString())),
       (_) => emit(ReviewVoted()),
+    );
+  }
+
+  // NUEVO: Método auxiliar para verificar estado del servicio ML
+  Future<String> getMLServiceStatus() async {
+    final result = await recommendationsRepository.getHealthStatus();
+    return result.fold(
+      (failure) => 'No disponible: ${failure.message}',
+      (status) => status,
     );
   }
 }

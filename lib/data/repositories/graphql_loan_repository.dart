@@ -6,6 +6,7 @@ import '../../core/services/graphql_service.dart';
 import '../../domain/entities/entities.dart';
 import '../../domain/repositories/repositories.dart';
 import '../datasources/graphql_queries.dart';
+import '../mock_data.dart';
 import '../models/graphql_models.dart' as gql_models;
 
 class GraphQLLoanRepository implements LoanRepository {
@@ -13,57 +14,109 @@ class GraphQLLoanRepository implements LoanRepository {
 
   GraphQLLoanRepository(this._graphQLService);
 
-  @override
-  Future<Either<Failure, List<Loan>>> getLoans({bool? isActive}) async {
-    try {
-      String graphQLQuery;
-      
-      if (isActive == true) {
-        // Para préstamos activos, obtenemos todos y filtramos los no vencidos
-        graphQLQuery = GraphQLQueries.getPrestamos;
-      } else if (isActive == false) {
-        // Para historial, podríamos usar una query específica o filtrar
-        graphQLQuery = GraphQLQueries.getPrestamos;
-      } else {
-        // Todos los préstamos
-        graphQLQuery = GraphQLQueries.getPrestamos;
-      }
+// lib/data/repositories/graphql_loan_repository.dart
+// ACTUALIZAR el método getLoans para incluir fallback:
 
-      final result = await _graphQLService.query(
-        graphQLQuery,
-        variables: {'page': 0, 'size': 50}, // Obtener más registros para filtrar
-      );
-
-      if (result.hasException) {
-        return Left(ServerFailure(result.exception.toString()));
-      }
-
-      final data = result.data;
-      if (data == null) {
-        return Left(ServerFailure('No data received'));
-      }
-
-      final paginatedResult = gql_models.PaginatedResult<gql_models.Prestamo>.fromJson(
-        data['prestamos'],
-        (json) => gql_models.Prestamo.fromJson(json),
-      );
-
-      // Convertir a entidades del dominio
-      List<Loan> loans = paginatedResult.content.map((prestamo) => _mapPrestamoToLoan(prestamo)).toList();
-
-      // Aplicar filtros según isActive
-      if (isActive == true) {
-        loans = loans.where((loan) => !loan.isReturned).toList();
-      } else if (isActive == false) {
-        loans = loans.where((loan) => loan.isReturned).toList();
-      }
-
-      return Right(loans);
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
+@override
+Future<Either<Failure, List<Loan>>> getLoans({bool? isActive}) async {
+  try {
+    String graphQLQuery;
+    
+    if (isActive == true) {
+      graphQLQuery = GraphQLQueries.getPrestamos;
+    } else if (isActive == false) {
+      graphQLQuery = GraphQLQueries.getPrestamos;
+    } else {
+      graphQLQuery = GraphQLQueries.getPrestamos;
     }
-  }
 
+    final result = await _graphQLService.query(
+      graphQLQuery,
+      variables: {'page': 0, 'size': 50},
+    );
+
+    if (result.hasException) {
+      print('⚠️ Error en GraphQL para préstamos: ${result.exception}');
+      // FALLBACK: usar datos mock que incluyen el préstamo por vencer
+      return _getMockLoans(isActive: isActive);
+    }
+
+    final data = result.data;
+    if (data == null || data['prestamos'] == null) {
+      print('⚠️ No hay datos de préstamos en GraphQL, usando mock');
+      // FALLBACK: usar datos mock
+      return _getMockLoans(isActive: isActive);
+    }
+
+    final paginatedResult = gql_models.PaginatedResult<gql_models.Prestamo>.fromJson(
+      data['prestamos'],
+      (json) => gql_models.Prestamo.fromJson(json),
+    );
+
+    // Convertir a entidades del dominio
+    List<Loan> loans = paginatedResult.content.map((prestamo) => _mapPrestamoToLoan(prestamo)).toList();
+
+    // IMPORTANTE: Si no hay préstamos del servidor, agregar los estáticos
+    if (loans.isEmpty) {
+      print('📚 No hay préstamos del servidor, agregando datos estáticos');
+      final mockResult = await _getMockLoans(isActive: isActive);
+      return mockResult.fold(
+        (failure) => Left(failure),
+        (mockLoans) => Right(mockLoans),
+      );
+    }
+
+    // COMBINAR: préstamos del servidor + préstamos estáticos mock
+    final mockResult = await _getMockLoans(isActive: isActive);
+    mockResult.fold(
+      (failure) {
+        // Si falla mock, solo devolver del servidor
+      },
+      (mockLoans) {
+        // Agregar préstamos mock que no estén ya en la lista del servidor
+        for (var mockLoan in mockLoans) {
+          if (!loans.any((loan) => loan.id == mockLoan.id)) {
+            loans.add(mockLoan);
+          }
+        }
+      },
+    );
+
+    // Aplicar filtros según isActive
+    if (isActive == true) {
+      loans = loans.where((loan) => !loan.isReturned).toList();
+    } else if (isActive == false) {
+      loans = loans.where((loan) => loan.isReturned).toList();
+    }
+
+    print('✅ Devolviendo ${loans.length} préstamos (servidor + estáticos)');
+    return Right(loans);
+    
+  } catch (e) {
+    print('❌ Error en GraphQL préstamos: $e');
+    // FALLBACK final: datos mock
+    return _getMockLoans(isActive: isActive);
+  }
+}
+
+// AGREGAR este método helper:
+Future<Either<Failure, List<Loan>>> _getMockLoans({bool? isActive}) async {
+  try {
+    await Future.delayed(const Duration(milliseconds: 500)); // Simular delay
+
+    if (isActive == true) {
+      return Right(MockData.loans.where((loan) => !loan.isReturned).toList());
+    } else if (isActive == false) {
+      return Right(MockData.loanHistory);
+    } else {
+      return Right([...MockData.loans, ...MockData.loanHistory]);
+    }
+  } catch (e) {
+    return Left(ServerFailure('Error en datos mock: $e'));
+  }
+}
+
+// El resto de la clase se mantiene igual...
   @override
   Future<Either<Failure, Loan>> getLoanById(String id) async {
     try {

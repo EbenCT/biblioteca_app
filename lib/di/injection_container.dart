@@ -2,7 +2,8 @@
 
 import 'package:get_it/get_it.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
-
+import '../core/services/local_notification_service.dart';
+import '../core/controllers/notification_controller.dart';
 import '../core/services/dialogflow_service.dart';
 import '../core/theme/app_theme.dart';
 import '../core/config/graphql_config.dart';
@@ -10,6 +11,7 @@ import '../core/services/graphql_service.dart';
 import '../core/services/auth_service.dart';
 import '../core/services/token_storage_service.dart';
 import '../data/repositories/auth_repository.dart';
+import '../data/repositories/hybrid_loan_repository.dart';
 import '../data/repositories/repositories_impl.dart';
 import '../data/repositories/graphql_ejemplar_repository.dart';
 import '../data/repositories/graphql_loan_repository.dart';
@@ -90,17 +92,21 @@ Future<void> init() async {
     () => GraphQLEjemplarRepository(sl<GraphQLService>()),
   );
 
-  sl.registerLazySingleton<LoanRepository>(
-    () => GraphQLLoanRepository(sl<GraphQLService>()),
-  );
+sl.registerLazySingleton<LoanRepository>(
+  () => HybridLoanRepository(
+    GraphQLLoanRepository(sl<GraphQLService>()),
+    LoanRepositoryImpl(),
+  ),
+);
 
-  // Hybrid repository for reservations (GraphQL + Mock fallback)
-  sl.registerLazySingleton<ReservationRepository>(
-    () => HybridReservationRepository(
-      GraphQLReservationRepository(sl<GraphQLService>()),
-      ReservationRepositoryImpl(),
-    ),
-  );
+// Hybrid repository for reservations (GraphQL + Cache + Mock fallback)
+sl.registerLazySingleton<ReservationRepository>(
+  () => HybridReservationRepository(
+    GraphQLReservationRepository(sl<GraphQLService>()),
+    ReservationRepositoryImpl(),
+    sl<BookRepository>(), // Necesita acceso al repositorio de libros
+  ),
+);
 
   // Repositories - Mock implementations for features not fully implemented
   sl.registerLazySingleton<NotificationRepository>(
@@ -122,6 +128,11 @@ sl.registerLazySingleton<ChatRepository>(
   // Core
   sl.registerLazySingleton(() => InternetConnectionChecker.createInstance());
   sl.registerLazySingleton(() => ThemeProvider());
+
+  sl.registerLazySingleton(() => LocalNotificationService.instance);
+  sl.registerLazySingleton(() => NotificationController.instance);
+
+  print('✅ Dependency injection completed successfully');
   
   print('✅ Dependency injection completed successfully');
 }

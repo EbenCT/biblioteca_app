@@ -250,11 +250,15 @@ class LoanRepositoryImpl implements LoanRepository {
       // Simulate API call
       await Future.delayed(const Duration(seconds: 1));
 
+      // USAR LOS NUEVOS DATOS MOCK que incluyen el préstamo por vencer
       if (isActive == true) {
+        // Solo préstamos activos (no devueltos)
         return Right(MockData.loans.where((loan) => !loan.isReturned).toList());
       } else if (isActive == false) {
+        // Solo historial (devueltos)
         return Right(MockData.loanHistory);
       } else {
+        // Todos los préstamos
         return Right([...MockData.loans, ...MockData.loanHistory]);
       }
     } catch (e) {
@@ -268,7 +272,9 @@ class LoanRepositoryImpl implements LoanRepository {
       // Simulate API call
       await Future.delayed(const Duration(seconds: 1));
 
-      final loan = [...MockData.loans, ...MockData.loanHistory].firstWhere(
+      // Buscar en todos los préstamos (activos + historial)
+      final allLoans = [...MockData.loans, ...MockData.loanHistory];
+      final loan = allLoans.firstWhere(
         (loan) => loan.id == id,
         orElse: () => throw Exception('Préstamo no encontrado'),
       );
@@ -296,7 +302,8 @@ class LoanRepositoryImpl implements LoanRepository {
       // Simulate API call
       await Future.delayed(const Duration(seconds: 1));
 
-      final loan = [...MockData.loans, ...MockData.loanHistory].firstWhere(
+      final allLoans = [...MockData.loans, ...MockData.loanHistory];
+      final loan = allLoans.firstWhere(
         (loan) => loan.id == loanId,
         orElse: () => throw Exception('Préstamo no encontrado'),
       );
@@ -307,7 +314,6 @@ class LoanRepositoryImpl implements LoanRepository {
     }
   }
 }
-
 class ReservationRepositoryImpl implements ReservationRepository {
   @override
   Future<Either<Failure, List<Reservation>>> getReservations({bool? isActive}) async {

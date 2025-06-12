@@ -12,11 +12,13 @@ import 'presentation/bloc/loan/loan_bloc.dart';
 import 'presentation/bloc/notification/notification_bloc.dart';
 import 'presentation/bloc/reservation/reservation_bloc.dart';
 import 'core/providers/voice_navigation_provider.dart';
+import 'core/controllers/notification_controller.dart';
 import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await di.init();
+  await NotificationController.instance.initialize();
   runApp(const MyApp());
 }
 

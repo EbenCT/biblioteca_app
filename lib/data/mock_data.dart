@@ -144,29 +144,64 @@ class MockData {
     ),
   ];
 
-  static List<Loan> loans = [
-    Loan(
-      id: 'loan1',
-      bookId: 'book1',
-      bookTitle: 'Cien años de soledad',
-      bookImageUrl: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=600&fit=crop',
-      loanDate: DateTime.now().subtract(const Duration(days: 5)),
-      dueDate: DateTime.now().add(const Duration(days: 10)),
-      isReturned: false,
-      isLate: false,
-    ),
-    Loan(
-      id: 'loan2',
-      bookId: 'book4',
-      bookTitle: 'Bases de Datos',
-      bookImageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=600&fit=crop',
-      loanDate: DateTime.now().subtract(const Duration(days: 20)),
-      dueDate: DateTime.now().subtract(const Duration(days: 5)),
-      isReturned: false,
-      isLate: true,
-      penalty: 10.50,
-    ),
-  ];
+// En lib/data/mock_data.dart - AGREGAR/REEMPLAZAR estas partes:
+
+// REEMPLAZAR la lista de loans:
+static List<Loan> loans = [
+  // ⚠️ PRÉSTAMO PRÓXIMO A VENCER - SIEMPRE PRESENTE
+  Loan(
+    id: 'loan_urgent',
+    bookId: 'book4',
+    bookTitle: 'Bases de Datos',
+    bookImageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=600&fit=crop',
+    loanDate: DateTime.now().subtract(const Duration(days: 13)),
+    dueDate: DateTime.now().add(const Duration(days: 2)), // Vence en 2 días
+    isReturned: false,
+    isLate: false,
+  ),
+  
+  // Préstamo normal
+  Loan(
+    id: 'loan1',
+    bookId: 'book1',
+    bookTitle: 'Cien años de soledad',
+    bookImageUrl: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=600&fit=crop',
+    loanDate: DateTime.now().subtract(const Duration(days: 5)),
+    dueDate: DateTime.now().add(const Duration(days: 10)),
+    isReturned: false,
+    isLate: false,
+  ),
+  
+  // Préstamo atrasado
+  Loan(
+    id: 'loan2',
+    bookId: 'book3',
+    bookTitle: 'Inteligencia Artificial: Un enfoque moderno',
+    bookImageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=600&fit=crop',
+    loanDate: DateTime.now().subtract(const Duration(days: 20)),
+    dueDate: DateTime.now().subtract(const Duration(days: 5)),
+    isReturned: false,
+    isLate: true,
+    penalty: 10.50,
+  ),
+];
+
+// AGREGAR estos métodos estáticos:
+static List<Loan> getLoansExpiringSoon({int daysThreshold = 3}) {
+  final now = DateTime.now();
+  return loans.where((loan) {
+    if (loan.isReturned || loan.isLate) return false;
+    final daysUntilDue = loan.dueDate.difference(now).inDays;
+    return daysUntilDue <= daysThreshold && daysUntilDue >= 0;
+  }).toList();
+}
+
+static Loan? getNextExpiringLoan() {
+  final expiringSoon = getLoansExpiringSoon();
+  if (expiringSoon.isEmpty) return null;
+  expiringSoon.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+  return expiringSoon.first;
+}
 
   static List<Loan> loanHistory = [
     Loan(

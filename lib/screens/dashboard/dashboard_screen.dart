@@ -244,6 +244,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ],
+            
+            // Información de notificaciones
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.notifications_active, 
+                     color: Colors.blue.shade600, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  'Notificaciones activadas',
+                  style: TextStyle(
+                    color: Colors.blue.shade600,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),

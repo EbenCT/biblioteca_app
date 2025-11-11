@@ -2,6 +2,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/graphql_service.dart';
+import '../../services/notification_service.dart';
 import '../../models/user.dart';
 import '../../models/miembro.dart';
 import 'auth_event.dart';
@@ -66,6 +67,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
       
       emit(Authenticated(user: user, miembro: miembro));
+      
+      // 🔔 Activar simulación de notificaciones del backend
+      await NotificationService.simulateBackendNotificationsAfterLogin();
     } catch (e) {
       emit(AuthError(message: e.toString()));
     }
@@ -117,6 +121,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       // Emitir estado autenticado (login automático)
       emit(Authenticated(user: user, miembro: miembro));
+      
+      // 🔔 Activar simulación de notificaciones del backend para nuevo usuario
+      await NotificationService.simulateBackendNotificationsAfterLogin();
     } catch (e) {
       emit(AuthError(message: e.toString()));
     }

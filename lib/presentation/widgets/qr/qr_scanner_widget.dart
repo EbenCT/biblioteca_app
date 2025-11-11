@@ -9,11 +9,13 @@ import '../../../config/app_config.dart';
 
 class QRScannerWidget extends StatefulWidget {
   final String? miembroId;
+  final String? userName;
   final VoidCallback? onClose;
 
   const QRScannerWidget({
     super.key,
     this.miembroId,
+    this.userName,
     this.onClose,
   });
 
@@ -148,6 +150,7 @@ class _QRScannerWidgetState extends State<QRScannerWidget> {
     context.read<AccessBloc>().add(ProcessQRCode(
       qrData: qrData,
       miembroId: widget.miembroId ?? '',
+      userName: widget.userName,
     ));
   }
 

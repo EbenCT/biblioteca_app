@@ -222,4 +222,44 @@ extension NotificationTypes on NotificationService {
       payload: 'access_reminder',
     );
   }
+
+  // Notificación cuando se marca entrada
+  static Future<void> showEntryNotification(String userName) async {
+    await NotificationService.showNotification(
+      id: 400,
+      title: '✅ Entrada Registrada',
+      body: '¡Bienvenido/a $userName! Tu entrada ha sido registrada exitosamente',
+      payload: 'entry_success',
+    );
+  }
+
+  // Notificación cuando se marca salida
+  static Future<void> showExitNotification(String userName, String duration) async {
+    await NotificationService.showNotification(
+      id: 500,
+      title: '👋 Salida Registrada',
+      body: '¡Hasta luego $userName! Tiempo en biblioteca: $duration',
+      payload: 'exit_success',
+    );
+  }
+
+  // Notificación de error en QR
+  static Future<void> showQRErrorNotification(String error) async {
+    await NotificationService.showNotification(
+      id: 600,
+      title: '❌ Error de Acceso',
+      body: 'No se pudo procesar el código QR: $error',
+      payload: 'qr_error',
+    );
+  }
+
+  // Notificación de registro exitoso
+  static Future<void> showRegistrationSuccessNotification(String userName) async {
+    await NotificationService.showNotification(
+      id: 700,
+      title: '🎉 ¡Bienvenido/a!',
+      body: '¡Hola $userName! Tu cuenta ha sido creada exitosamente',
+      payload: 'registration_success',
+    );
+  }
 }

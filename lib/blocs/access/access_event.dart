@@ -11,24 +11,34 @@ class StopQRScanner extends AccessEvent {}
 class ProcessQRCode extends AccessEvent {
   final String qrData;
   final String miembroId;
+  final String? userName;
 
   const ProcessQRCode({
     required this.qrData,
     required this.miembroId,
+    this.userName,
   });
 }
 
 // Eventos de acceso manual
 class MarcarEntradaManual extends AccessEvent {
   final String miembroId;
+  final String? userName;
 
-  const MarcarEntradaManual({required this.miembroId});
+  const MarcarEntradaManual({
+    required this.miembroId,
+    this.userName,
+  });
 }
 
 class MarcarSalidaManual extends AccessEvent {
   final String miembroId;
+  final String? userName;
 
-  const MarcarSalidaManual({required this.miembroId});
+  const MarcarSalidaManual({
+    required this.miembroId,
+    this.userName,
+  });
 }
 
 // Eventos de historial

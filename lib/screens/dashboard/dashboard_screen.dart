@@ -151,6 +151,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           padding: const EdgeInsets.all(32),
                           child: QRScannerWidget(
                             miembroId: _miembroId,
+                            userName: widget.miembro?.nombre ?? widget.user.username,
                             onClose: () => setState(() => _showQRScanner = false),
                           ),
                         ),
@@ -343,12 +344,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _handleManualEntry() {
     context.read<AccessBloc>().add(MarcarEntradaManual(
       miembroId: _miembroId,
+      userName: widget.miembro?.nombre ?? widget.user.username,
     ));
   }
 
   void _handleManualExit() {
     context.read<AccessBloc>().add(MarcarSalidaManual(
       miembroId: _miembroId,
+      userName: widget.miembro?.nombre ?? widget.user.username,
     ));
   }
 

@@ -119,7 +119,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         );
       }
 
-      // Emitir estado autenticado (login automático)
+      // Mostrar notificación de registro exitoso
+      await NotificationTypes.showRegistrationSuccessNotification(miembro!.nombre);
+
+      // Primero emitir que el miembro fue creado con éxito
+      emit(MiembroCreated(
+        miembro: miembro,
+        message: '¡Registro exitoso! Bienvenido/a ${miembro.nombre}',
+      ));
+
+      // Esperar un poco para mostrar el mensaje
+      await Future.delayed(const Duration(milliseconds: 800));
+
+      // Luego emitir estado autenticado (login automático)
       emit(Authenticated(user: user, miembro: miembro));
       
       // 🔔 Activar simulación de notificaciones del backend para nuevo usuario

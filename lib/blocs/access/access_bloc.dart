@@ -2,6 +2,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/qr_service.dart';
 import '../../services/graphql_service.dart';
+import '../../services/notification_service.dart';
 import '../../models/models.dart';
 import 'access_event.dart';
 import 'access_state.dart';
@@ -89,6 +90,9 @@ class AccessBloc extends Bloc<AccessEvent, AccessState> {
         
         resultado = await GraphQLService.registrarIngreso(event.miembroId, qrCode);
         
+        // Mostrar notificación de entrada exitosa
+        await NotificationTypes.showEntryNotification(event.userName ?? 'Usuario');
+        
         emit(EntradaRegistrada(
           acceso: resultado,
           timestamp: DateTime.now(),
@@ -101,10 +105,17 @@ class AccessBloc extends Bloc<AccessEvent, AccessState> {
         final accesoData = resultado;
         final fechaEntrada = accesoData['fechaEntrada'] ?? '';
         final fechaSalida = accesoData['fechaSalida'] ?? '';
+        final duracion = _calcularDuracion(fechaEntrada, fechaSalida);
+        
+        // Mostrar notificación de salida exitosa
+        await NotificationTypes.showExitNotification(
+          event.userName ?? 'Usuario', 
+          duracion.isNotEmpty ? duracion : 'Tiempo no calculado'
+        );
         
         emit(SalidaRegistrada(
           acceso: resultado,
-          duracion: _calcularDuracion(fechaEntrada, fechaSalida),
+          duracion: duracion,
           timestamp: DateTime.now(),
         ));
       }
@@ -114,7 +125,12 @@ class AccessBloc extends Bloc<AccessEvent, AccessState> {
       emit(QRScannerActive());
 
     } catch (e) {
-      emit(AccessError(message: 'Error al procesar QR: ${e.toString()}'));
+      final errorMessage = 'Error al procesar QR: ${e.toString()}';
+      
+      // Mostrar notificación de error
+      await NotificationTypes.showQRErrorNotification(e.toString());
+      
+      emit(AccessError(message: errorMessage));
       
       // Reactivar scanner después del error
       await Future.delayed(const Duration(seconds: 2));
@@ -148,6 +164,9 @@ class AccessBloc extends Bloc<AccessEvent, AccessState> {
     try {
       final result = await QRService.marcarEntradaManual(event.miembroId);
       
+      // Mostrar notificación de entrada manual
+      await NotificationTypes.showEntryNotification(event.userName ?? 'Usuario');
+      
       emit(EntradaRegistrada(
         acceso: result,
         timestamp: DateTime.now(),
@@ -162,6 +181,9 @@ class AccessBloc extends Bloc<AccessEvent, AccessState> {
 
     try {
       final result = await QRService.marcarSalidaManual(event.miembroId);
+      
+      // Mostrar notificación de salida manual
+      await NotificationTypes.showExitNotification(event.userName ?? 'Usuario', 'Manual');
       
       emit(SalidaRegistrada(
         acceso: result,

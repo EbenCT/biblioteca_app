@@ -178,15 +178,17 @@ class GraphQLService {
     }
   ''';
 
-  static const String _getMiembroByEmailQuery = '''
-    query GetMiembroByEmail(\$email: String!) {
-      miembroByEmail(email: \$email) {
+  static const String _getMiembroPorUserIdQuery = '''
+    query ObtenerMiembroPorUserId(\$userId: ID!) {
+      miembroPorUserId(userId: \$userId) {
         id
         nombre
         apellido
         direccion
         telefono
         fechaRegistro
+        createdAt
+        updatedAt
       }
     }
   ''';
@@ -209,13 +211,13 @@ class GraphQLService {
     };
   }
 
-  // Obtener miembro por email
-  static Future<Miembro?> getMiembroByEmail(String email) async {
-    final result = await query(_getMiembroByEmailQuery, variables: {
-      'email': email,
+  // Obtener miembro por user ID
+  static Future<Miembro?> getMiembroPorUserId(String userId) async {
+    final result = await query(_getMiembroPorUserIdQuery, variables: {
+      'userId': userId,
     });
 
-    final data = result.data!['miembroByEmail'];
+    final data = result.data!['miembroPorUserId'];
     return data != null ? Miembro.fromJson(data) : null;
   }
 
@@ -291,12 +293,20 @@ class GraphQLService {
 
   // Registrar ingreso
   static Future<Map<String, dynamic>> registrarIngreso(String miembroId, String codigoQr) async {
-    final result = await mutate(_registrarIngresoMutation, variables: {
+    print('📝 registrarIngreso - miembroId: $miembroId, codigoQr: $codigoQr');
+    
+    final variables = {
       'miembroId': miembroId,
       'codigoQr': codigoQr,
-    });
-
-    return result.data!['registrarIngreso'];
+    };
+    print('📤 Variables enviadas: $variables');
+    
+    final result = await mutate(_registrarIngresoMutation, variables: variables);
+    
+    final data = result.data!['registrarIngreso'];
+    print('📥 Respuesta recibida: $data');
+    
+    return data;
   }
 
   // Registrar egreso

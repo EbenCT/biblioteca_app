@@ -56,10 +56,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         role: 'USER',
       );
       
-      // TODO: Obtener datos del miembro cuando sepamos la query correcta del backend
-      // Por ahora, el miembro será null en el login hasta que sepamos qué query usar
+      // Obtener datos del miembro usando el userId
+      Miembro? miembro;
+      try {
+        miembro = await GraphQLService.getMiembroPorUserId(user.id);
+        print('✅ Miembro obtenido: ${miembro?.id} - ${miembro?.nombre}');
+      } catch (e) {
+        print('❌ Error obteniendo miembro: $e');
+      }
       
-      emit(Authenticated(user: user, miembro: null));
+      emit(Authenticated(user: user, miembro: miembro));
     } catch (e) {
       emit(AuthError(message: e.toString()));
     }
@@ -91,15 +97,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         role: 'USER',
       );
 
-      // Crear objeto Miembro basado en los datos del usuario creado
-      final miembro = Miembro(
-        id: user.id,
-        nombre: event.nombre,
-        apellido: event.apellido,
-        direccion: miembroData['direccion'] ?? '',
-        telefono: event.telefono,
-        fechaRegistro: DateTime.now().toIso8601String(),
-      );
+      // Obtener el miembro real del backend usando el userId
+      Miembro? miembro;
+      try {
+        miembro = await GraphQLService.getMiembroPorUserId(user.id);
+        print('✅ Miembro registrado y obtenido: ${miembro?.id} - ${miembro?.nombre}');
+      } catch (e) {
+        print('❌ Error obteniendo miembro después del registro: $e');
+        // Fallback: crear miembro temporal con los datos locales
+        miembro = Miembro(
+          id: user.id,
+          nombre: event.nombre,
+          apellido: event.apellido,
+          direccion: miembroData['direccion'] ?? '',
+          telefono: event.telefono,
+          fechaRegistro: DateTime.now().toIso8601String(),
+        );
+      }
 
       // Emitir estado autenticado (login automático)
       emit(Authenticated(user: user, miembro: miembro));

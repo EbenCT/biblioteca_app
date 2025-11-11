@@ -8,6 +8,7 @@ import '../../blocs/access/access_state.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../presentation/widgets/qr/qr_widgets.dart';
+import '../history/access_history_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final User user;
@@ -28,13 +29,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   AccesoBiblioteca? _ultimoAcceso;
   bool _isInside = false;
 
+  // Helper para obtener el ID correcto del miembro
+  String get _miembroId => widget.miembro?.id ?? widget.user.id;
+
   @override
   void initState() {
     super.initState();
     // Verificar estado del miembro al cargar
-    // Verificar estado del miembro usando el user ID
+    // Verificar estado del miembro usando el miembro ID o user ID como fallback
     context.read<AccessBloc>().add(VerificarEstadoMiembro(
-      miembroId: widget.user.id,
+      miembroId: _miembroId,
     ));
   }
 
@@ -66,6 +70,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           foregroundColor: Colors.white,
           elevation: 0,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.history),
+              onPressed: _showHistory,
+              tooltip: 'Historial de Accesos',
+            ),
             IconButton(
               icon: const Icon(Icons.logout),
               onPressed: () {
@@ -141,7 +150,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: Padding(
                           padding: const EdgeInsets.all(32),
                           child: QRScannerWidget(
-                            miembroId: widget.user.id,
+                            miembroId: _miembroId,
                             onClose: () => setState(() => _showQRScanner = false),
                           ),
                         ),
@@ -315,20 +324,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _handleManualEntry() {
     context.read<AccessBloc>().add(MarcarEntradaManual(
-      miembroId: widget.user.id,
+      miembroId: _miembroId,
     ));
   }
 
   void _handleManualExit() {
     context.read<AccessBloc>().add(MarcarSalidaManual(
-      miembroId: widget.user.id,
+      miembroId: _miembroId,
     ));
   }
 
   void _showHistory() {
-    context.read<AccessBloc>().add(LoadHistorialAccesos(
-      miembroId: widget.user.id,
-    ));
-    // TODO: Navegar a pantalla de historial
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AccessHistoryScreen(
+          user: widget.user,
+          miembro: widget.miembro,
+        ),
+      ),
+    );
   }
 }

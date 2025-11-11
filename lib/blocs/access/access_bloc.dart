@@ -63,14 +63,31 @@ class AccessBloc extends Bloc<AccessEvent, AccessState> {
     emit(AccessLoading());
 
     try {
+      print('🔍 Procesando QR - miembroId: ${event.miembroId}, qrData: ${event.qrData}');
+      
+      // Validar que los datos no estén vacíos
+      if (event.miembroId.isEmpty) {
+        throw Exception('miembroId está vacío');
+      }
+      if (event.qrData.isEmpty) {
+        throw Exception('qrData está vacío');
+      }
+      
       // Verificar el estado actual del miembro
       final estaAdentro = await GraphQLService.miembroEstaAdentro(event.miembroId);
+      print('📊 Estado del miembro: ${estaAdentro ? "ADENTRO" : "AFUERA"}');
 
       Map<String, dynamic> resultado;
       
       if (!estaAdentro) {
         // Registrar entrada
-        resultado = await GraphQLService.registrarIngreso(event.miembroId, event.qrData);
+        print('🚪 Registrando ENTRADA...');
+        
+        // Temporal: probar con un código QR fijo para diagnosticar
+        final qrCode = event.qrData.isNotEmpty ? event.qrData : 'QR_BIBLIOTECA_ENTRADA_${DateTime.now().millisecondsSinceEpoch}';
+        print('🎯 Usando código QR: $qrCode');
+        
+        resultado = await GraphQLService.registrarIngreso(event.miembroId, qrCode);
         
         emit(EntradaRegistrada(
           acceso: resultado,
@@ -78,6 +95,7 @@ class AccessBloc extends Bloc<AccessEvent, AccessState> {
         ));
       } else {
         // Registrar salida
+        print('🚪 Registrando SALIDA...');
         resultado = await GraphQLService.registrarEgreso(event.miembroId, event.qrData);
         
         final accesoData = resultado;

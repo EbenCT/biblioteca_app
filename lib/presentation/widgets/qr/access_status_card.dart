@@ -136,11 +136,11 @@ class AccessStatusCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _getAccessTypeColor(acceso.tipoAcceso),
+                  color: _getAccessTypeColor(acceso.metodoAcceso),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  '${acceso.tipoAcceso.emoji} ${acceso.tipoAcceso.displayName}',
+                  '${_getAccessTypeEmoji(acceso.metodoAcceso)} ${_getAccessTypeDisplayName(acceso.metodoAcceso)}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -182,7 +182,7 @@ class AccessStatusCard extends StatelessWidget {
             ),
           ],
 
-          if (acceso.duracionFormateada.isNotEmpty) ...[
+          if (acceso.fechaSalida != null) ...[
             const SizedBox(height: 8),
             Row(
               children: [
@@ -193,7 +193,7 @@ class AccessStatusCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Duración: ${acceso.duracionFormateada}',
+                  'Duración: ${_calculateDuration(acceso.fechaEntrada, acceso.fechaSalida!)}',
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontSize: 12,
@@ -208,12 +208,49 @@ class AccessStatusCard extends StatelessWidget {
     );
   }
 
-  Color _getAccessTypeColor(TipoAcceso tipo) {
-    switch (tipo) {
-      case TipoAcceso.entrada:
-        return Colors.green;
-      case TipoAcceso.salida:
-        return Colors.blue;
+  Color _getAccessTypeColor(String metodo) {
+    if (metodo.toLowerCase().contains('entrada') || metodo.toLowerCase().contains('ingreso')) {
+      return Colors.green;
+    } else if (metodo.toLowerCase().contains('salida') || metodo.toLowerCase().contains('egreso')) {
+      return Colors.blue;
+    }
+    return Colors.grey;
+  }
+
+  String _getAccessTypeEmoji(String metodo) {
+    if (metodo.toLowerCase().contains('entrada') || metodo.toLowerCase().contains('ingreso')) {
+      return '📍';
+    } else if (metodo.toLowerCase().contains('salida') || metodo.toLowerCase().contains('egreso')) {
+      return '🚪';
+    }
+    return '🔄';
+  }
+
+  String _getAccessTypeDisplayName(String metodo) {
+    if (metodo.toLowerCase().contains('entrada') || metodo.toLowerCase().contains('ingreso')) {
+      return 'Entrada';
+    } else if (metodo.toLowerCase().contains('salida') || metodo.toLowerCase().contains('egreso')) {
+      return 'Salida';
+    }
+    return metodo;
+  }
+
+  String _calculateDuration(String fechaEntrada, String fechaSalida) {
+    try {
+      final entrada = DateTime.parse(fechaEntrada);
+      final salida = DateTime.parse(fechaSalida);
+      final duracion = salida.difference(entrada);
+      
+      final horas = duracion.inHours;
+      final minutos = duracion.inMinutes % 60;
+      
+      if (horas > 0) {
+        return '${horas}h ${minutos}m';
+      } else {
+        return '${minutos}m';
+      }
+    } catch (e) {
+      return 'N/A';
     }
   }
 }

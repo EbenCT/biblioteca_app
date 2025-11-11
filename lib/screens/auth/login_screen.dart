@@ -49,14 +49,19 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: MediaQuery.of(context).size.height - 
+                    MediaQuery.of(context).padding.top - 48, // SafeArea + padding
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                 // Logo/Icono
                 const Icon(
                   Icons.library_books,
@@ -158,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                 // Datos de prueba (para desarrollo)
-                if (true) // Cambiar a false en producción
+                if (false) // Cambiar a false en producción
                   Container(
                     margin: const EdgeInsets.only(top: 32),
                     padding: const EdgeInsets.all(16),
@@ -185,7 +190,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                   ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

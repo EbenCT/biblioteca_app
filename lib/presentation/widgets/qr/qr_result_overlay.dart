@@ -131,9 +131,9 @@ class QRResultOverlay extends StatelessWidget {
           _buildInfoRow('Fecha', acceso.fechaEntrada),
           if (acceso.fechaSalida != null)
             _buildInfoRow('Salida', acceso.fechaSalida!),
-          if (acceso.duracionFormateada.isNotEmpty)
-            _buildInfoRow('Duración', acceso.duracionFormateada),
-          _buildInfoRow('Tipo', acceso.tipoAcceso.value),
+          if (acceso.fechaSalida != null)
+            _buildInfoRow('Duración', _calculateDuration(acceso.fechaEntrada, acceso.fechaSalida!)),
+          _buildInfoRow('Método', acceso.metodoAcceso),
         ],
       ),
     );
@@ -186,6 +186,25 @@ class QRResultOverlay extends StatelessWidget {
         return Colors.red;
       default:
         return Colors.grey;
+    }
+  }
+
+  String _calculateDuration(String fechaEntrada, String fechaSalida) {
+    try {
+      final entrada = DateTime.parse(fechaEntrada);
+      final salida = DateTime.parse(fechaSalida);
+      final duracion = salida.difference(entrada);
+      
+      final horas = duracion.inHours;
+      final minutos = duracion.inMinutes % 60;
+      
+      if (horas > 0) {
+        return '${horas}h ${minutos}m';
+      } else {
+        return '${minutos}m';
+      }
+    } catch (e) {
+      return 'N/A';
     }
   }
 

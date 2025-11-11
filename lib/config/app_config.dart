@@ -4,8 +4,8 @@ class AppConfig {
   static const String baseUrl = String.fromEnvironment(
     'BASE_URL',
     //defaultValue: 'http://10.0.2.2:8080', // Android Emulator
-    // defaultValue: 'http://localhost:8080', // iOS Simulator  
-    defaultValue: 'http://192.168.100.4:8080', // Physical device
+     defaultValue: 'http://64.227.59.183:8080', //  
+    //defaultValue: 'http://192.168.100.4:8080', // Physical device
   );
   
   static const String graphqlEndpoint = '$baseUrl/graphql';
@@ -35,4 +35,15 @@ class AppConfig {
   // Configuración QR Scanner
   static const double qrScanArea = 0.7; // 70% del área de la pantalla
   static const Duration qrScanTimeout = Duration(seconds: 30);
+  
+  // Método para verificar conectividad
+  static String getDebugInfo() {
+    return '''
+📱 CONFIGURACIÓN DEBUG:
+🌐 Base URL: $baseUrl
+🔗 GraphQL Endpoint: $graphqlEndpoint
+📱 App: $appName v$appVersion
+⏱️ Timeout: ${qrScanTimeout.inSeconds}s
+''';
+  }
 }

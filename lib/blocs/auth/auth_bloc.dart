@@ -48,17 +48,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final result = await GraphQLService.login(event.email, event.password);
       
-      final user = result['user'] as User;
+      final userData = result['user'];
+      final user = User(
+        id: userData['id'] ?? '',
+        username: userData['email'] ?? '',
+        email: userData['email'] ?? '',
+        role: 'USER',
+      );
       
-      // Intentar obtener miembro asociado
-      Miembro? miembro;
-      try {
-        miembro = await GraphQLService.getMiembroByUser(user.id);
-      } catch (e) {
-        // No hay miembro aún, ok continuar
-      }
-
-      emit(Authenticated(user: user, miembro: miembro));
+      // TODO: Obtener datos del miembro cuando sepamos la query correcta del backend
+      // Por ahora, el miembro será null en el login hasta que sepamos qué query usar
+      
+      emit(Authenticated(user: user, miembro: null));
     } catch (e) {
       emit(AuthError(message: e.toString()));
     }
@@ -68,30 +69,40 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
 
     try {
-      // Registro de usuario (username = email para simplicidad)
-      final userResult = await GraphQLService.register(
-        event.nombre, // username
-        event.email,
-        event.password,
-      );
-      
-      final user = userResult['user'] as User;
-
-      // Crear miembro automáticamente después del registro
+      // Crear miembro (esto crea automáticamente el usuario y devuelve token)
       final miembroData = {
         'nombre': event.nombre,
         'apellido': event.apellido,
-        'telefono': event.telefono,
         'direccion': 'Sin especificar',
-        'usuarioId': user.id,
+        'telefono': event.telefono,
+        'fechaRegistro': DateTime.now().toIso8601String(),
+        'email': event.email,
+        'password': event.password,
       };
 
-      final miembro = await GraphQLService.createMiembro(miembroData);
+      final result = await GraphQLService.createMiembro(miembroData);
+      
+      // Crear objeto User con la respuesta
+      final userData = result['user'];
+      final user = User(
+        id: userData['id'] ?? '',
+        username: userData['email'] ?? '',
+        email: userData['email'] ?? '',
+        role: 'USER',
+      );
 
-      emit(MiembroCreated(
-        miembro: miembro,
-        message: 'Cuenta creada exitosamente. Ya puedes usar el código QR.',
-      ));
+      // Crear objeto Miembro basado en los datos del usuario creado
+      final miembro = Miembro(
+        id: user.id,
+        nombre: event.nombre,
+        apellido: event.apellido,
+        direccion: miembroData['direccion'] ?? '',
+        telefono: event.telefono,
+        fechaRegistro: DateTime.now().toIso8601String(),
+      );
+
+      // Emitir estado autenticado (login automático)
+      emit(Authenticated(user: user, miembro: miembro));
     } catch (e) {
       emit(AuthError(message: e.toString()));
     }

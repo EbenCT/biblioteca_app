@@ -10,8 +10,16 @@ class GraphQLService {
 
   // Inicializar el cliente GraphQL
   static Future<void> initialize() async {
-    await _loadToken();
-    _initializeClient();
+    try {
+      await _loadToken();
+      _initializeClient();
+      print('✅ GraphQL Service inicializado correctamente');
+      print('🌐 Endpoint: ${AppConfig.graphqlEndpoint}');
+    } catch (e) {
+      print('❌ Error inicializando GraphQL Service: $e');
+      // Inicializar con configuración básica
+      _initializeClient();
+    }
   }
 
   // Cargar token guardado
@@ -55,106 +63,91 @@ class GraphQLService {
   // Ejecutar query
   static Future<QueryResult> query(String queryString, {Map<String, dynamic>? variables}) async {
     if (_client == null) {
-      throw Exception('GraphQL client no inicializado');
+      print('❌ GraphQL client no inicializado, reinicializando...');
+      await initialize();
+      if (_client == null) {
+        throw Exception('GraphQL client no inicializado. Verifica la conexión.');
+      }
     }
 
-    final result = await _client!.query(
-      QueryOptions(
-        document: gql(queryString),
-        variables: variables ?? {},
-      ),
-    );
+    try {
+      final result = await _client!.query(
+        QueryOptions(
+          document: gql(queryString),
+          variables: variables ?? {},
+          fetchPolicy: FetchPolicy.noCache,
+        ),
+      );
 
-    if (result.hasException) {
-      throw Exception('GraphQL Error: ${result.exception.toString()}');
+      if (result.hasException) {
+        print('❌ GraphQL Query Error: ${result.exception.toString()}');
+        throw Exception('GraphQL Error: ${result.exception.toString()}');
+      }
+
+      return result;
+    } catch (e) {
+      print('❌ Error ejecutando query: $e');
+      rethrow;
     }
-
-    return result;
   }
 
   // Ejecutar mutation
   static Future<QueryResult> mutate(String mutationString, {Map<String, dynamic>? variables}) async {
     if (_client == null) {
-      throw Exception('GraphQL client no inicializado');
+      print('❌ GraphQL client no inicializado, reinicializando...');
+      await initialize();
+      if (_client == null) {
+        throw Exception('GraphQL client no inicializado. Verifica la conexión.');
+      }
     }
 
-    final result = await _client!.mutate(
-      MutationOptions(
-        document: gql(mutationString),
-        variables: variables ?? {},
-      ),
-    );
+    try {
+      print('🔄 Ejecutando mutation GraphQL...');
+      final result = await _client!.mutate(
+        MutationOptions(
+          document: gql(mutationString),
+          variables: variables ?? {},
+          fetchPolicy: FetchPolicy.noCache,
+        ),
+      );
 
-    if (result.hasException) {
-      throw Exception('GraphQL Error: ${result.exception.toString()}');
+      if (result.hasException) {
+        print('❌ GraphQL Mutation Error: ${result.exception.toString()}');
+        throw Exception('GraphQL Error: ${result.exception.toString()}');
+      }
+
+      print('✅ Mutation ejecutada exitosamente');
+      return result;
+    } catch (e) {
+      print('❌ Error ejecutando mutation: $e');
+      rethrow;
     }
-
-    return result;
   }
 
   // ========== AUTENTICACIÓN ==========
 
   static const String _loginMutation = '''
-    mutation LoginUser(\$input: LoginRequestDTO!) {
-      loginUser(input: \$input) {
+    mutation Login(\$loginRequest: LoginRequest!) {
+      login(loginRequest: \$loginRequest) {
         token
         user {
           id
-          username
           email
-          role
-        }
-      }
-    }
-  ''';
-
-  static const String _registerMutation = '''
-    mutation RegisterUser(\$input: RegisterRequestDTO!) {
-      registerUser(input: \$input) {
-        token
-        user {
-          id
-          username
-          email
-          role
         }
       }
     }
   ''';
 
   // Login
-  static Future<Map<String, dynamic>> login(String username, String password) async {
+  static Future<Map<String, dynamic>> login(String email, String password) async {
     final result = await mutate(_loginMutation, variables: {
-      'input': {
-        'username': username,
-        'password': password,
-      }
-    });
-
-    final data = result.data!['loginUser'];
-    final token = data['token'];
-    
-    // Guardar token
-    await _saveToken(token);
-    
-    return {
-      'token': token,
-      'user': User.fromJson(data['user']),
-    };
-  }
-
-  // Register
-  static Future<Map<String, dynamic>> register(String username, String email, String password) async {
-    final result = await mutate(_registerMutation, variables: {
-      'input': {
-        'username': username,
+      'loginRequest': {
         'email': email,
         'password': password,
-        'role': 'USER',
       }
     });
 
-    final data = result.data!['registerUser'];
+    final data = result.data!['login'];
     final token = data['token'];
     
     // Guardar token
@@ -162,7 +155,7 @@ class GraphQLService {
     
     return {
       'token': token,
-      'user': User.fromJson(data['user']),
+      'user': data['user'],
     };
   }
 
@@ -174,182 +167,218 @@ class GraphQLService {
   // ========== MIEMBROS ==========
 
   static const String _createMiembroMutation = '''
-    mutation CreateMiembro(\$input: MiembroInput!) {
-      createMiembro(input: \$input) {
-        id
-        nombre
-        apellido
-        direccion
-        telefono
-        fechaRegistro
-        qrPersonal
-        usuario {
+    mutation CrearMiembro(\$input: MiembroInput!) {
+      crearMiembro(input: \$input) {
+        token
+        user {
           id
-          username
           email
         }
       }
     }
   ''';
 
-  static const String _getMiembroByUserQuery = '''
-    query GetMiembroByUserId(\$userId: ID!) {
-      miembroByUserId(userId: \$userId) {
+  static const String _getMiembroByEmailQuery = '''
+    query GetMiembroByEmail(\$email: String!) {
+      miembroByEmail(email: \$email) {
         id
         nombre
         apellido
         direccion
         telefono
         fechaRegistro
-        qrPersonal
-        usuario {
-          id
-          username
-          email
-        }
       }
     }
   ''';
 
   // Crear miembro
-  static Future<Miembro> createMiembro(Map<String, dynamic> miembroData) async {
+  static Future<Map<String, dynamic>> createMiembro(Map<String, dynamic> miembroData) async {
     final result = await mutate(_createMiembroMutation, variables: {
       'input': miembroData,
     });
 
-    return Miembro.fromJson(result.data!['createMiembro']);
+    final data = result.data!['crearMiembro'];
+    final token = data['token'];
+    
+    // Guardar token automáticamente
+    await _saveToken(token);
+    
+    return {
+      'token': token,
+      'user': data['user'],
+    };
   }
 
-  // Obtener miembro por usuario
-  static Future<Miembro?> getMiembroByUser(String userId) async {
-    final result = await query(_getMiembroByUserQuery, variables: {
-      'userId': userId,
+  // Obtener miembro por email
+  static Future<Miembro?> getMiembroByEmail(String email) async {
+    final result = await query(_getMiembroByEmailQuery, variables: {
+      'email': email,
     });
 
-    final data = result.data!['miembroByUserId'];
+    final data = result.data!['miembroByEmail'];
     return data != null ? Miembro.fromJson(data) : null;
   }
 
   // ========== ACCESOS BIBLIOTECA (QR) ==========
 
-  static const String _marcarEntradaMutation = '''
-    mutation MarcarEntrada(\$input: AccesoBibliotecaInput!) {
-      createAccesoBiblioteca(input: \$input) {
-        id
+  static const String _generarQRMutation = '''
+    mutation GenerarQR {
+      generarCodigoQR
+    }
+  ''';
+
+  static const String _registrarIngresoMutation = '''
+    mutation RegistrarIngreso(\$miembroId: ID!, \$codigoQr: String!) {
+      registrarIngreso(miembroId: \$miembroId, codigoQr: \$codigoQr) {
+        accesoId
+        miembroId
+        miembroNombre
+        miembroApellido
         fechaEntrada
         fechaSalida
-        miembroId
-        qrCode
-        tipoAcceso
-        miembro {
-          id
-          nombre
-          apellido
-        }
+        tipoAccion
+        mensaje
+        exitoso
       }
     }
   ''';
 
-  static const String _marcarSalidaMutation = '''
-    mutation MarcarSalida(\$id: ID!, \$input: AccesoBibliotecaInput!) {
-      updateAccesoBiblioteca(id: \$id, input: \$input) {
-        id
+  static const String _registrarEgresoMutation = '''
+    mutation RegistrarEgreso(\$miembroId: ID!, \$codigoQr: String!) {
+      registrarEgreso(miembroId: \$miembroId, codigoQr: \$codigoQr) {
+        accesoId
+        miembroId
+        miembroNombre
+        miembroApellido
         fechaEntrada
         fechaSalida
-        miembroId
-        qrCode
-        tipoAcceso
-        miembro {
-          id
-          nombre
-          apellido
-        }
+        tipoAccion
+        mensaje
+        exitoso
       }
     }
   ''';
 
-  static const String _getHistorialAccesosQuery = '''
-    query GetHistorialAccesos(\$miembroId: ID!) {
-      accesosByMiembro(miembroId: \$miembroId) {
+  static const String _historialMiembroQuery = '''
+    query HistorialMiembro(\$miembroId: ID!) {
+      historialMiembro(miembroId: \$miembroId) {
         id
         fechaEntrada
         fechaSalida
+        metodoAcceso
+        codigoQr
+        estado
         miembroId
-        qrCode
-        tipoAcceso
+        miembroNombre
+        miembroApellido
+        createdAt
+        updatedAt
       }
     }
   ''';
 
-  // Marcar entrada
-  static Future<AccesoBiblioteca> marcarEntrada(String miembroId, String? qrCode) async {
-    final result = await mutate(_marcarEntradaMutation, variables: {
-      'input': {
-        'fechaEntrada': DateTime.now().toIso8601String(),
-        'miembroId': miembroId,
-        'qrCode': qrCode,
-        'tipoAcceso': 'ENTRADA',
-      }
-    });
+  static const String _miembroEstaAdentroQuery = '''
+    query MiembroEstaAdentro(\$miembroId: ID!) {
+      miembroEstaAdentro(miembroId: \$miembroId)
+    }
+  ''';
 
-    return AccesoBiblioteca.fromJson(result.data!['createAccesoBiblioteca']);
+  // Generar código QR
+  static Future<String> generarCodigoQR() async {
+    final result = await mutate(_generarQRMutation);
+    return result.data!['generarCodigoQR'];
   }
 
-  // Marcar salida
-  static Future<AccesoBiblioteca> marcarSalida(String accesoId, String? qrCode) async {
-    final result = await mutate(_marcarSalidaMutation, variables: {
-      'id': accesoId,
-      'input': {
-        'fechaSalida': DateTime.now().toIso8601String(),
-        'qrCode': qrCode,
-        'tipoAcceso': 'SALIDA',
-      }
+  // Registrar ingreso
+  static Future<Map<String, dynamic>> registrarIngreso(String miembroId, String codigoQr) async {
+    final result = await mutate(_registrarIngresoMutation, variables: {
+      'miembroId': miembroId,
+      'codigoQr': codigoQr,
     });
 
-    return AccesoBiblioteca.fromJson(result.data!['updateAccesoBiblioteca']);
+    return result.data!['registrarIngreso'];
+  }
+
+  // Registrar egreso
+  static Future<Map<String, dynamic>> registrarEgreso(String miembroId, String codigoQr) async {
+    final result = await mutate(_registrarEgresoMutation, variables: {
+      'miembroId': miembroId,
+      'codigoQr': codigoQr,
+    });
+
+    return result.data!['registrarEgreso'];
   }
 
   // Obtener historial de accesos
-  static Future<List<AccesoBiblioteca>> getHistorialAccesos(String miembroId) async {
-    final result = await query(_getHistorialAccesosQuery, variables: {
+  static Future<List<Map<String, dynamic>>> getHistorialMiembro(String miembroId) async {
+    final result = await query(_historialMiembroQuery, variables: {
       'miembroId': miembroId,
     });
 
-    final List<dynamic> accesos = result.data!['accesosByMiembro'] ?? [];
-    return accesos.map((acceso) => AccesoBiblioteca.fromJson(acceso)).toList();
+    final List<dynamic> accesos = result.data!['historialMiembro'] ?? [];
+    return accesos.cast<Map<String, dynamic>>();
+  }
+
+  // Verificar si miembro está adentro
+  static Future<bool> miembroEstaAdentro(String miembroId) async {
+    final result = await query(_miembroEstaAdentroQuery, variables: {
+      'miembroId': miembroId,
+    });
+
+    return result.data!['miembroEstaAdentro'] ?? false;
   }
 
   // ========== LIBROS ==========
 
   static const String _getLibrosDisponiblesQuery = '''
-    query GetLibrosDisponibles {
+    query LibrosDisponibles {
       librosDisponibles {
         id
         titulo
         autor
         categoria
         disponible
-        isbn
-        descripcion
-        editorial
-        qrCode
+        createdAt
+        updatedAt
+      }
+    }
+  ''';
+
+  static const String _getTodosLosLibrosQuery = '''
+    query TodosLosLibros {
+      libros {
+        id
+        titulo
+        autor
+        categoria
+        disponible
+        createdAt
+        updatedAt
       }
     }
   ''';
 
   // Obtener libros disponibles
-  static Future<List<Libro>> getLibrosDisponibles() async {
+  static Future<List<Map<String, dynamic>>> getLibrosDisponibles() async {
     final result = await query(_getLibrosDisponiblesQuery);
 
     final List<dynamic> libros = result.data!['librosDisponibles'] ?? [];
-    return libros.map((libro) => Libro.fromJson(libro)).toList();
+    return libros.cast<Map<String, dynamic>>();
+  }
+
+  // Obtener todos los libros
+  static Future<List<Map<String, dynamic>>> getTodosLosLibros() async {
+    final result = await query(_getTodosLosLibrosQuery);
+
+    final List<dynamic> libros = result.data!['libros'] ?? [];
+    return libros.cast<Map<String, dynamic>>();
   }
 
   // ========== PRÉSTAMOS ==========
 
-  static const String _getMisPrestamosActivosQuery = '''
-    query GetMisPrestamosActivos(\$miembroId: ID!) {
-      prestamosActivos(miembroId: \$miembroId) {
+  static const String _getPrestamosActivosQuery = '''
+    query PrestamosActivos {
+      prestamosActivos {
         id
         fechaPrestamo
         fechaDevolucionEsperada
@@ -358,19 +387,15 @@ class GraphQLService {
         multa
         libroId
         miembroId
-        libro {
-          id
-          titulo
-          autor
-          categoria
-        }
+        createdAt
+        updatedAt
       }
     }
   ''';
 
-  static const String _getMiHistorialQuery = '''
-    query GetMiHistorial(\$miembroId: ID!) {
-      prestamos(miembroId: \$miembroId) {
+  static const String _getTodosPrestamosQuery = '''
+    query TodosPrestamos {
+      prestamos {
         id
         fechaPrestamo
         fechaDevolucionEsperada
@@ -379,34 +404,51 @@ class GraphQLService {
         multa
         libroId
         miembroId
-        libro {
-          id
-          titulo
-          autor
-          categoria
-        }
+        createdAt
+        updatedAt
+      }
+    }
+  ''';
+
+  static const String _getPrestamosConMultaQuery = '''
+    query PrestamosConMulta {
+      prestamosConMulta {
+        id
+        fechaPrestamo
+        fechaDevolucionEsperada
+        fechaDevolucionReal
+        estado
+        multa
+        libroId
+        miembroId
+        createdAt
+        updatedAt
       }
     }
   ''';
 
   // Obtener préstamos activos
-  static Future<List<Prestamo>> getMisPrestamosActivos(String miembroId) async {
-    final result = await query(_getMisPrestamosActivosQuery, variables: {
-      'miembroId': miembroId,
-    });
+  static Future<List<Map<String, dynamic>>> getPrestamosActivos() async {
+    final result = await query(_getPrestamosActivosQuery);
 
     final List<dynamic> prestamos = result.data!['prestamosActivos'] ?? [];
-    return prestamos.map((prestamo) => Prestamo.fromJson(prestamo)).toList();
+    return prestamos.cast<Map<String, dynamic>>();
   }
 
-  // Obtener historial de préstamos
-  static Future<List<Prestamo>> getMiHistorial(String miembroId) async {
-    final result = await query(_getMiHistorialQuery, variables: {
-      'miembroId': miembroId,
-    });
+  // Obtener todos los préstamos
+  static Future<List<Map<String, dynamic>>> getTodosPrestamos() async {
+    final result = await query(_getTodosPrestamosQuery);
 
     final List<dynamic> prestamos = result.data!['prestamos'] ?? [];
-    return prestamos.map((prestamo) => Prestamo.fromJson(prestamo)).toList();
+    return prestamos.cast<Map<String, dynamic>>();
+  }
+
+  // Obtener préstamos con multa
+  static Future<List<Map<String, dynamic>>> getPrestamosConMulta() async {
+    final result = await query(_getPrestamosConMultaQuery);
+
+    final List<dynamic> prestamos = result.data!['prestamosConMulta'] ?? [];
+    return prestamos.cast<Map<String, dynamic>>();
   }
 
   // ========== UTILIDADES ==========

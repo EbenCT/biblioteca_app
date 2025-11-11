@@ -1,6 +1,4 @@
 // lib/models/miembro.dart
-import 'user.dart';
-
 class Miembro {
   final String id;
   final String nombre;
@@ -8,9 +6,6 @@ class Miembro {
   final String direccion;
   final String telefono;
   final String fechaRegistro;
-  final String? qrPersonal; // ✨ QR personal único del miembro
-  final String? usuarioId;  // Relación con User
-  final User? usuario;      // Usuario asociado (opcional para poblado)
 
   Miembro({
     required this.id,
@@ -19,22 +14,16 @@ class Miembro {
     required this.direccion,
     required this.telefono,
     required this.fechaRegistro,
-    this.qrPersonal,
-    this.usuarioId,
-    this.usuario,
   });
 
   factory Miembro.fromJson(Map<String, dynamic> json) {
     return Miembro(
-      id: json['id'] ?? '',
+      id: json['id']?.toString() ?? '',
       nombre: json['nombre'] ?? '',
       apellido: json['apellido'] ?? '',
       direccion: json['direccion'] ?? '',
       telefono: json['telefono'] ?? '',
       fechaRegistro: json['fechaRegistro'] ?? '',
-      qrPersonal: json['qrPersonal'],
-      usuarioId: json['usuarioId'],
-      usuario: json['usuario'] != null ? User.fromJson(json['usuario']) : null,
     );
   }
 
@@ -46,9 +35,6 @@ class Miembro {
       'direccion': direccion,
       'telefono': telefono,
       'fechaRegistro': fechaRegistro,
-      'qrPersonal': qrPersonal,
-      'usuarioId': usuarioId,
-      'usuario': usuario?.toJson(),
     };
   }
 

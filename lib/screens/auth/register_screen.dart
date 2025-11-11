@@ -14,19 +14,20 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
   final _nombreController = TextEditingController();
   final _apellidoController = TextEditingController();
   final _telefonoController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _nombreController.dispose();
+    _apellidoController.dispose();
+    _telefonoController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -39,9 +40,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         RegisterEvent(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
-          nombre: _usernameController.text.trim(), // Usar username como nombre por simplicidad
-          apellido: _usernameController.text.trim(), // Provisional
-          telefono: '000-000-0000', // Provisional
+          nombre: _nombreController.text.trim(),
+          apellido: _apellidoController.text.trim(),
+          telefono: _telefonoController.text.trim(),
         ),
       );
     }
@@ -86,19 +87,58 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // Campo Usuario
+                // Campo Nombre
                 TextFormField(
-                  controller: _usernameController,
+                  controller: _nombreController,
                   decoration: const InputDecoration(
-                    labelText: 'Usuario',
+                    labelText: 'Nombre',
                     prefixIcon: Icon(Icons.person),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Por favor ingresa un usuario';
+                      return 'Por favor ingresa tu nombre';
                     }
-                    if (value.trim().length < 3) {
-                      return 'El usuario debe tener al menos 3 caracteres';
+                    if (value.trim().length < 2) {
+                      return 'El nombre debe tener al menos 2 caracteres';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Campo Apellido
+                TextFormField(
+                  controller: _apellidoController,
+                  decoration: const InputDecoration(
+                    labelText: 'Apellido',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Por favor ingresa tu apellido';
+                    }
+                    if (value.trim().length < 2) {
+                      return 'El apellido debe tener al menos 2 caracteres';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Campo Teléfono
+                TextFormField(
+                  controller: _telefonoController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Teléfono',
+                    prefixIcon: Icon(Icons.phone),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Por favor ingresa tu teléfono';
+                    }
+                    if (value.trim().length < 7) {
+                      return 'El teléfono debe tener al menos 7 dígitos';
                     }
                     return null;
                   },

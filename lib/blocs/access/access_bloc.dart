@@ -2,6 +2,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/qr_service.dart';
 import '../../services/graphql_service.dart';
+import '../../models/models.dart';
 import 'access_event.dart';
 import 'access_state.dart';
 
@@ -62,47 +63,62 @@ class AccessBloc extends Bloc<AccessEvent, AccessState> {
     emit(AccessLoading());
 
     try {
-      // Procesando QR (el widget maneja la pausa del scanner)
+      // Verificar el estado actual del miembro
+      final estaAdentro = await GraphQLService.miembroEstaAdentro(event.miembroId);
 
-      // Procesar código QR
-      final resultado = await QRService.procesarQRAcceso(
-        event.qrData, 
-        event.miembroId
-      );
-
-      // Formatear resultado para UI
-      final resultadoFormateado = QRService.formatearResultadoParaUI(resultado);
-
-      // Emitir estado específico según el tipo de resultado
-      final tipo = resultado['tipo'];
+      Map<String, dynamic> resultado;
       
-      if (tipo == 'entrada') {
+      if (!estaAdentro) {
+        // Registrar entrada
+        resultado = await GraphQLService.registrarIngreso(event.miembroId, event.qrData);
+        
         emit(EntradaRegistrada(
-          acceso: resultado['acceso'],
-          timestamp: resultado['timestamp'],
-        ));
-      } else if (tipo == 'salida') {
-        emit(SalidaRegistrada(
-          acceso: resultado['acceso'],
-          duracion: resultado['duracion'],
-          timestamp: resultado['timestamp'],
+          acceso: resultado,
+          timestamp: DateTime.now(),
         ));
       } else {
-        emit(QRProcessSuccess(
-          resultado: resultadoFormateado,
-          acceso: resultado['acceso'],
+        // Registrar salida
+        resultado = await GraphQLService.registrarEgreso(event.miembroId, event.qrData);
+        
+        final accesoData = resultado;
+        final fechaEntrada = accesoData['fechaEntrada'] ?? '';
+        final fechaSalida = accesoData['fechaSalida'] ?? '';
+        
+        emit(SalidaRegistrada(
+          acceso: resultado,
+          duracion: _calcularDuracion(fechaEntrada, fechaSalida),
+          timestamp: DateTime.now(),
         ));
       }
 
-      // Notificar éxito (el widget manejará la reanudación del scanner)
+      // Breve pausa para mostrar el resultado
       await Future.delayed(const Duration(seconds: 2));
       emit(QRScannerActive());
 
     } catch (e) {
-      emit(AccessError(message: e.toString()));
+      emit(AccessError(message: 'Error al procesar QR: ${e.toString()}'));
       
-      // El widget manejará la reanudación del escáner
+      // Reactivar scanner después del error
+      await Future.delayed(const Duration(seconds: 2));
       emit(QRScannerActive());
+    }
+  }
+
+  String _calcularDuracion(String? fechaEntrada, String? fechaSalida) {
+    if (fechaEntrada == null || fechaSalida == null || fechaEntrada.isEmpty || fechaSalida.isEmpty) {
+      return '';
+    }
+    
+    try {
+      final ingreso = DateTime.parse(fechaEntrada);
+      final egreso = DateTime.parse(fechaSalida);
+      final duracion = egreso.difference(ingreso);
+      final horas = duracion.inHours;
+      final minutos = duracion.inMinutes % 60;
+      
+      return '${horas}h ${minutos}m';
+    } catch (e) {
+      return '';
     }
   }
 
@@ -112,10 +128,10 @@ class AccessBloc extends Bloc<AccessEvent, AccessState> {
     emit(AccessLoading());
 
     try {
-      final acceso = await QRService.marcarEntradaManual(event.miembroId);
+      final result = await QRService.marcarEntradaManual(event.miembroId);
       
       emit(EntradaRegistrada(
-        acceso: acceso,
+        acceso: result,
         timestamp: DateTime.now(),
       ));
     } catch (e) {
@@ -127,11 +143,11 @@ class AccessBloc extends Bloc<AccessEvent, AccessState> {
     emit(AccessLoading());
 
     try {
-      final acceso = await QRService.marcarSalidaManual(event.miembroId);
+      final result = await QRService.marcarSalidaManual(event.miembroId);
       
       emit(SalidaRegistrada(
-        acceso: acceso,
-        duracion: acceso.duracionFormateada,
+        acceso: result,
+        duracion: 'Manual',
         timestamp: DateTime.now(),
       ));
     } catch (e) {
@@ -145,8 +161,10 @@ class AccessBloc extends Bloc<AccessEvent, AccessState> {
     emit(AccessLoading());
 
     try {
-      final historial = await GraphQLService.getHistorialAccesos(event.miembroId);
-      emit(HistorialAccesosLoaded(historialAccesos: historial));
+      final historial = await GraphQLService.getHistorialMiembro(event.miembroId);
+      // Convertir a AccesoBiblioteca objects
+      final accesos = historial.map((h) => AccesoBiblioteca.fromJson(h)).toList();
+      emit(HistorialAccesosLoaded(historialAccesos: accesos));
     } catch (e) {
       emit(AccessError(message: 'Error al cargar historial: ${e.toString()}'));
     }
@@ -156,8 +174,8 @@ class AccessBloc extends Bloc<AccessEvent, AccessState> {
     emit(AccessLoading());
 
     try {
-      final estado = await QRService.verificarEstadoMiembro(event.miembroId);
-      emit(EstadoMiembroLoaded(estadoMiembro: estado));
+      final estaAdentro = await GraphQLService.miembroEstaAdentro(event.miembroId);
+      emit(EstadoMiembroLoaded(estaAdentro: estaAdentro));
     } catch (e) {
       emit(AccessError(message: 'Error al verificar estado: ${e.toString()}'));
     }

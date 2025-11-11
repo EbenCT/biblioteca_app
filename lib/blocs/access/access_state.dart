@@ -19,7 +19,7 @@ class QRScannerInactive extends AccessState {}
 // Estados de éxito
 class QRProcessSuccess extends AccessState {
   final Map<String, dynamic> resultado;
-  final AccesoBiblioteca? acceso;
+  final Map<String, dynamic>? acceso;
 
   const QRProcessSuccess({
     required this.resultado,
@@ -28,7 +28,7 @@ class QRProcessSuccess extends AccessState {
 }
 
 class EntradaRegistrada extends AccessState {
-  final AccesoBiblioteca acceso;
+  final Map<String, dynamic> acceso;
   final DateTime timestamp;
 
   const EntradaRegistrada({
@@ -38,7 +38,7 @@ class EntradaRegistrada extends AccessState {
 }
 
 class SalidaRegistrada extends AccessState {
-  final AccesoBiblioteca acceso;
+  final Map<String, dynamic> acceso;
   final String duracion;
   final DateTime timestamp;
 
@@ -57,9 +57,9 @@ class HistorialAccesosLoaded extends AccessState {
 }
 
 class EstadoMiembroLoaded extends AccessState {
-  final Map<String, dynamic> estadoMiembro;
+  final bool estaAdentro;
 
-  const EstadoMiembroLoaded({required this.estadoMiembro});
+  const EstadoMiembroLoaded({required this.estaAdentro});
 }
 
 // Estados de error

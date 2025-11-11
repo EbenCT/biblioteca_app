@@ -1,7 +1,7 @@
 // lib/services/qr_service.dart
 import 'package:permission_handler/permission_handler.dart';
 import '../config/app_config.dart';
-import '../models/models.dart';
+
 import 'graphql_service.dart';
 
 enum TipoQR {
@@ -132,13 +132,13 @@ class QRService {
     }
 
     try {
-      final acceso = await GraphQLService.marcarEntrada(miembroId, qrData);
+      final result = await GraphQLService.registrarIngreso(miembroId, qrData);
       
       return {
-        'success': true,
-        'message': '¡Entrada registrada exitosamente!',
+        'success': result['exitoso'] ?? false,
+        'message': result['mensaje'] ?? 'Entrada registrada',
         'tipo': 'entrada',
-        'acceso': acceso,
+        'acceso': result,
         'timestamp': DateTime.now(),
       };
     } catch (e) {
@@ -156,26 +156,13 @@ class QRService {
     }
 
     try {
-      // Buscar acceso activo (entrada sin salida)
-      final historialAccesos = await GraphQLService.getHistorialAccesos(miembroId);
-      
-      final accesoActivo = historialAccesos.firstWhere(
-        (acceso) => acceso.esAccesoActivo,
-        orElse: () => throw Exception('No hay entrada activa para registrar salida'),
-      );
-
-      // Marcar salida
-      final accesoActualizado = await GraphQLService.marcarSalida(
-        accesoActivo.id, 
-        qrData
-      );
+      final result = await GraphQLService.registrarEgreso(miembroId, qrData);
       
       return {
-        'success': true,
-        'message': '¡Salida registrada exitosamente!',
+        'success': result['exitoso'] ?? false,
+        'message': result['mensaje'] ?? 'Salida registrada',
         'tipo': 'salida',
-        'acceso': accesoActualizado,
-        'duracion': accesoActualizado.duracionFormateada,
+        'acceso': result,
         'timestamp': DateTime.now(),
       };
     } catch (e) {
@@ -186,26 +173,18 @@ class QRService {
   // ========== ACCESOS MANUALES (SIN QR) ==========
 
   // Marcar entrada manual (sin QR)
-  static Future<AccesoBiblioteca> marcarEntradaManual(String miembroId) async {
+  static Future<Map<String, dynamic>> marcarEntradaManual(String miembroId) async {
     try {
-      return await GraphQLService.marcarEntrada(miembroId, null);
+      return await GraphQLService.registrarIngreso(miembroId, 'MANUAL_ENTRY');
     } catch (e) {
       throw Exception('Error al marcar entrada manual: ${e.toString()}');
     }
   }
 
   // Marcar salida manual (sin QR)
-  static Future<AccesoBiblioteca> marcarSalidaManual(String miembroId) async {
+  static Future<Map<String, dynamic>> marcarSalidaManual(String miembroId) async {
     try {
-      // Buscar acceso activo
-      final historialAccesos = await GraphQLService.getHistorialAccesos(miembroId);
-      
-      final accesoActivo = historialAccesos.firstWhere(
-        (acceso) => acceso.esAccesoActivo,
-        orElse: () => throw Exception('No hay entrada activa para registrar salida'),
-      );
-
-      return await GraphQLService.marcarSalida(accesoActivo.id, null);
+      return await GraphQLService.registrarEgreso(miembroId, 'MANUAL_EXIT');
     } catch (e) {
       throw Exception('Error al marcar salida manual: ${e.toString()}');
     }
@@ -238,9 +217,12 @@ class QRService {
   // Verificar estado actual del miembro
   static Future<Map<String, dynamic>> verificarEstadoMiembro(String miembroId) async {
     try {
-      final historialAccesos = await GraphQLService.getHistorialAccesos(miembroId);
+      final historialAccesos = await GraphQLService.getHistorialMiembro(miembroId);
       
-      final accesoActivo = historialAccesos.where((acceso) => acceso.esAccesoActivo).toList();
+      // Verificar si tiene acceso activo (sin fechaSalida)
+      final accesoActivo = historialAccesos.where((acceso) => 
+        acceso['fechaSalida'] == null && acceso['estado'] == true
+      ).toList();
       
       return {
         'tieneAccesoActivo': accesoActivo.isNotEmpty,

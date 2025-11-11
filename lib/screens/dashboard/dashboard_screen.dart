@@ -32,11 +32,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     // Verificar estado del miembro al cargar
-    if (widget.miembro != null) {
-      context.read<AccessBloc>().add(VerificarEstadoMiembro(
-        miembroId: widget.miembro!.id,
-      ));
-    }
+    // Verificar estado del miembro usando el user ID
+    context.read<AccessBloc>().add(VerificarEstadoMiembro(
+      miembroId: widget.user.id,
+    ));
   }
 
   @override
@@ -47,20 +46,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           setState(() {
             _showQRScanner = false;
             if (state is EntradaRegistrada) {
-              _ultimoAcceso = state.acceso;
+              _ultimoAcceso = AccesoBiblioteca.fromJson(state.acceso);
               _isInside = true;
             } else if (state is SalidaRegistrada) {
-              _ultimoAcceso = state.acceso;
+              _ultimoAcceso = AccesoBiblioteca.fromJson(state.acceso);
               _isInside = false;
             }
           });
         } else if (state is EstadoMiembroLoaded) {
           setState(() {
-            _isInside = state.estadoMiembro['isInside'] ?? false;
-            final ultimoAccesoData = state.estadoMiembro['ultimoAcceso'];
-            if (ultimoAccesoData != null) {
-              _ultimoAcceso = AccesoBiblioteca.fromJson(ultimoAccesoData);
-            }
+            _isInside = state.estaAdentro;
           });
         }
       },
@@ -92,14 +87,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 16),
 
                   // Estado de acceso y controles manuales
-                  if (widget.miembro != null)
-                    AccessStatusCard(
-                      ultimoAcceso: _ultimoAcceso,
-                      isInside: _isInside,
-                      onManualEntry: () => _handleManualEntry(),
-                      onManualExit: () => _handleManualExit(),
-                      onViewHistory: () => _showHistory(),
-                    ),
+                  AccessStatusCard(
+                    ultimoAcceso: _ultimoAcceso,
+                    isInside: _isInside,
+                    onManualEntry: () => _handleManualEntry(),
+                    onManualExit: () => _handleManualExit(),
+                    onViewHistory: () => _showHistory(),
+                  ),
 
                   const SizedBox(height: 16),
 
@@ -147,7 +141,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: Padding(
                           padding: const EdgeInsets.all(32),
                           child: QRScannerWidget(
-                            miembroId: widget.miembro?.id,
+                            miembroId: widget.user.id,
                             onClose: () => setState(() => _showQRScanner = false),
                           ),
                         ),
@@ -158,16 +152,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
           ],
         ),
-        floatingActionButton: widget.miembro != null
-            ? QRFloatingButton(
-                isActive: _showQRScanner,
-                onPressed: () {
-                  setState(() {
-                    _showQRScanner = !_showQRScanner;
-                  });
-                },
-              )
-            : null,
+        floatingActionButton: QRFloatingButton(
+          isActive: _showQRScanner,
+          onPressed: () {
+            setState(() {
+              _showQRScanner = !_showQRScanner;
+            });
+          },
+        ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
     );
@@ -322,27 +314,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _handleManualEntry() {
-    if (widget.miembro != null) {
-      context.read<AccessBloc>().add(MarcarEntradaManual(
-        miembroId: widget.miembro!.id,
-      ));
-    }
+    context.read<AccessBloc>().add(MarcarEntradaManual(
+      miembroId: widget.user.id,
+    ));
   }
 
   void _handleManualExit() {
-    if (widget.miembro != null) {
-      context.read<AccessBloc>().add(MarcarSalidaManual(
-        miembroId: widget.miembro!.id,
-      ));
-    }
+    context.read<AccessBloc>().add(MarcarSalidaManual(
+      miembroId: widget.user.id,
+    ));
   }
 
   void _showHistory() {
-    if (widget.miembro != null) {
-      context.read<AccessBloc>().add(LoadHistorialAccesos(
-        miembroId: widget.miembro!.id,
-      ));
-      // TODO: Navegar a pantalla de historial
-    }
+    context.read<AccessBloc>().add(LoadHistorialAccesos(
+      miembroId: widget.user.id,
+    ));
+    // TODO: Navegar a pantalla de historial
   }
 }

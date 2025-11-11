@@ -9,6 +9,7 @@ import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../presentation/widgets/qr/qr_widgets.dart';
 import '../history/access_history_screen.dart';
+import '../books/books_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final User user;
@@ -71,6 +72,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           elevation: 0,
           actions: [
             IconButton(
+              icon: const Icon(Icons.library_books),
+              onPressed: _showBooks,
+              tooltip: 'Ver Libros',
+            ),
+            IconButton(
               icon: const Icon(Icons.history),
               onPressed: _showHistory,
               tooltip: 'Historial de Accesos',
@@ -93,6 +99,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   // Tarjeta de bienvenida
                   _buildWelcomeCard(),
+                  const SizedBox(height: 16),
+
+                  // Acciones rápidas
+                  _buildQuickActionsCard(),
                   const SizedBox(height: 16),
 
                   // Estado de acceso y controles manuales
@@ -171,6 +181,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
           },
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      ),
+    );
+  }
+
+  Widget _buildQuickActionsCard() {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Acciones Rápidas',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Colors.blue.shade800,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _QuickActionButton(
+                    icon: Icons.library_books,
+                    label: 'Ver Libros',
+                    color: Colors.green,
+                    onTap: _showBooks,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _QuickActionButton(
+                    icon: Icons.history,
+                    label: 'Historial',
+                    color: Colors.orange,
+                    onTap: _showHistory,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _QuickActionButton(
+                    icon: Icons.qr_code_scanner,
+                    label: 'Escanear QR',
+                    color: Colors.blue,
+                    onTap: () => setState(() => _showQRScanner = true),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -355,12 +420,72 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ));
   }
 
+  void _showBooks() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const BooksScreen(),
+      ),
+    );
+  }
+
   void _showHistory() {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => AccessHistoryScreen(
           user: widget.user,
           miembro: widget.miembro,
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 28,
+              color: color,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );

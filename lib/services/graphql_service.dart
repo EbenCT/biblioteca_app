@@ -468,4 +468,32 @@ class GraphQLService {
 
   // Obtener token actual
   static String? get currentToken => _token;
+
+  // ========== GESTIÓN DE LIBROS ==========
+
+  static const String _getLibrosQuery = '''
+    query GetLibros {
+      libros {
+        id
+        titulo
+        autor
+        categoria
+        disponible
+        createdAt
+        updatedAt
+      }
+    }
+  ''';
+
+  // Obtener todos los libros
+  static Future<List<Map<String, dynamic>>> getLibros() async {
+    try {
+      final result = await query(_getLibrosQuery);
+      final List<dynamic> libros = result.data!['libros'] ?? [];
+      return libros.cast<Map<String, dynamic>>();
+    } catch (e) {
+      print('Error obteniendo libros: $e');
+      return [];
+    }
+  }
 }

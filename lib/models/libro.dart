@@ -5,6 +5,7 @@ class Libro {
   final String autor;
   final String categoria;
   final bool disponible;
+  final String? imagenPortada; // URL de la imagen de portada
   final String? createdAt;
   final String? updatedAt;
 
@@ -14,6 +15,7 @@ class Libro {
     required this.autor,
     required this.categoria,
     required this.disponible,
+    this.imagenPortada,
     this.createdAt,
     this.updatedAt,
   });
@@ -25,6 +27,7 @@ class Libro {
       autor: json['autor'] ?? '',
       categoria: json['categoria'] ?? '',
       disponible: json['disponible'] ?? false,
+      imagenPortada: json['imagenPortada'],
       createdAt: json['createdAt'],
       updatedAt: json['updatedAt'],
     );
@@ -37,6 +40,7 @@ class Libro {
       'autor': autor,
       'categoria': categoria,
       'disponible': disponible,
+      'imagenPortada': imagenPortada,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
     };

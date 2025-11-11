@@ -10,6 +10,7 @@ import '../../blocs/auth/auth_event.dart';
 import '../../presentation/widgets/qr/qr_widgets.dart';
 import '../history/access_history_screen.dart';
 import '../books/books_screen.dart';
+import '../prestamos/loan_history_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final User user;
@@ -234,6 +235,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _QuickActionButton(
+                    icon: Icons.account_balance_wallet,
+                    label: 'Mis Préstamos',
+                    color: Colors.teal,
+                    onTap: _showLoanHistory,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(), // Espacio vacío para mantener la simetría
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(), // Espacio vacío para mantener la simetría
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -424,6 +446,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const BooksScreen(),
+      ),
+    );
+  }
+
+  void _showLoanHistory() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const LoanHistoryScreen(),
       ),
     );
   }
